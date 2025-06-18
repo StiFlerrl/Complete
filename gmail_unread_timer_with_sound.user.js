@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name         Gmail Unread Timer + Custom Sound & Snippets
 // @namespace    http://tampermonkey.net/
-// @version      1.10
-// @description  Popup+buttons
+// @version      1.11
+// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/gmail_unread_timer_with_sound.user.js
+// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/gmail_unread_timer_with_sound.user.js
 // @match        *://mail.google.com/*
 // @run-at       document-idle
 // @grant        none
