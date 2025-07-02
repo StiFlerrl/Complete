@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail helper
 // @namespace    http://tampermonkey.net/
-// @version      1.01
+// @version      1.02
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
@@ -69,7 +69,7 @@
       position:'fixed', top:'80px', right:'20px', zIndex:9999,
       background:'rgba(255,255,255,0.95)', boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
       padding:'8px', borderRadius:'6px', fontFamily:'Arial,sans-serif', fontSize:'14px',
-      width:'240px', userSelect:'none', resize:'both', overflow:'auto'
+      width:'240px', userSelect:'none', resize:'horizontal', overflow:'auto'
     });
 
     const header = document.createElement('div');
@@ -139,13 +139,14 @@
       btn.addEventListener('click', () => {
         if (key === 'answers') {
           if (!answersExpanded) {
-            [
+            const subButtons = [
               ['Authorization HCP', 'authorizationHcp'],
               ['High Copay', 'highCopay'],
               ['High Ded', 'highDed'],
               ['Member id card', 'memberIdCard'],
               ['Medicare id card', 'medicareIdCard']
-            ].forEach(([subLabel, subKey]) => {
+            ];
+            subButtons.forEach(([subLabel, subKey]) => {
               const subBtn = document.createElement('button');
               subBtn.textContent = subLabel;
               Object.assign(subBtn.style, {
@@ -153,12 +154,9 @@
               });
               subBtn.addEventListener('click', () => {
                 insertSnippet(subKey);
-                Array.from(popup.querySelectorAll('button')).forEach(b => {
-                  if ([
-                    'Authorization HCP', 'High Copay', 'High Ded', 'Member id card', 'Medicare id card'
-                  ].includes(b.textContent)) {
-                    b.remove();
-                  }
+                subButtons.forEach(([lbl]) => {
+                  const b = Array.from(popup.querySelectorAll('button')).find(x => x.textContent === lbl);
+                  if (b) b.remove();
                 });
                 answersExpanded = false;
               });
