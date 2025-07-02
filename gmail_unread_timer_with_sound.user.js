@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail helper
 // @namespace    http://tampermonkey.net/
-// @version      1.02
+// @version      1.03
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
@@ -15,6 +15,8 @@
   const LIVE_UPDATE_INTERVAL  = 1000;
   const SOUND_REPEAT_INTERVAL = 10000;
   const ALERT_SOUND_URL       = 'https://raw.githubusercontent.com/StiFlerrl/Complete/main/plyus_org-z_uk-u_edomleniya-2.mp3';
+  const STORAGE_KEY_POSITION  = 'gmail-helper-position';
+  const STORAGE_KEY_WIDTH     = 'gmail-helper-width';
 
   const SNIPPETS = {
     referralHip: `We can only accept the patient after the referring office sends the referral with the following details:\n\nDr. Hikin Dimitry\nNPI: 1457619017\n3047 Ave U, 2nd Fl, Brooklyn, NY 11229\n\nUnfortunately, we won’t be able to proceed without the referral.\nPlease let us know once it has been submitted.\n\nThank you for your understanding!`,
@@ -65,11 +67,20 @@
   function createPopup(){
     if(popup) return;
     popup = document.createElement('div');
+
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_POSITION) || '{}');
+    const savedWidth = localStorage.getItem(STORAGE_KEY_WIDTH);
+
     Object.assign(popup.style, {
-      position:'fixed', top:'80px', right:'20px', zIndex:9999,
-      background:'rgba(255,255,255,0.95)', boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
+      position:'fixed', top: saved.top || '80px', left: saved.left || '', right: saved.right || '20px',
+      zIndex:9999, background:'rgba(255,255,255,0.95)', boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
       padding:'8px', borderRadius:'6px', fontFamily:'Arial,sans-serif', fontSize:'14px',
-      width:'240px', userSelect:'none', resize:'horizontal', overflow:'auto'
+      width: savedWidth || '240px', userSelect:'none', resize:'horizontal', overflow:'auto'
+    });
+
+    popup.addEventListener('mouseup', () => {
+      const rect = popup.getBoundingClientRect();
+      localStorage.setItem(STORAGE_KEY_WIDTH, rect.width + 'px');
     });
 
     const header = document.createElement('div');
@@ -188,8 +199,23 @@
       document.addEventListener('mouseup', onMouseUp);
     });
   }
-  function onMouseMove(e){ popup.style.left=(e.clientX-dragOffsetX)+'px'; popup.style.top=(e.clientY-dragOffsetY)+'px'; }
-  function onMouseUp(){ document.removeEventListener('mousemove',onMouseMove); document.removeEventListener('mouseup',onMouseUp); }
+
+  function onMouseMove(e){
+    const maxX = window.innerWidth - popup.offsetWidth;
+    const maxY = window.innerHeight - popup.offsetHeight;
+    let newLeft = Math.min(Math.max(0, e.clientX - dragOffsetX), maxX);
+    let newTop  = Math.min(Math.max(0, e.clientY - dragOffsetY), maxY);
+    popup.style.left = newLeft + 'px';
+    popup.style.top  = newTop + 'px';
+  }
+
+  function onMouseUp(){
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    const rect = popup.getBoundingClientRect();
+    localStorage.setItem(STORAGE_KEY_POSITION, JSON.stringify({ top: popup.style.top, left: popup.style.left, right: popup.style.right }));
+    localStorage.setItem(STORAGE_KEY_WIDTH, rect.width + 'px');
+  }
 
   function getMessageDate(row){ const span=row.querySelector('span[title]'); return span?new Date(span.getAttribute('title')):null; }
 
