@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail helper
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.01
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
@@ -20,7 +20,7 @@
     referralHip: `We can only accept the patient after the referring office sends the referral with the following details:\n\nDr. Hikin Dimitry\nNPI: 1457619017\n3047 Ave U, 2nd Fl, Brooklyn, NY 11229\n\nUnfortunately, we won’t be able to proceed without the referral.\nPlease let us know once it has been submitted.\n\nThank you for your understanding!`,
     referralUhc: `We can only accept the patient after the referring office sends the referral with the following details:\n\nDr. Racanelli\nNPI: 1639194921\n3047 Ave U, 2nd Fl, Brooklyn, NY 11229\n\nUnfortunately, we won’t be able to proceed without the referral.\n\nPlease let us know once it has been submitted.\nThank you for your understanding!`,
     needTime: `Apologies, I need a little more time to give you an accurate response. I am already working on your request!`,
-    authorizationHcp: `Authorization is required through the EZ Net portal for this patient. Please submit the authorization. Unfortunately, we cannot accept the patient without it.`,
+    authorizationHcp: `Authorization is required through the EZ Net portal for this patient. Please submit the authorization. Unfortunately, we cannot accept the patient without it.\n\nDr. Zakheim Alan,\nNPI is 1033165774\nAddress is 3047 Ave U, 2nd Fl, Brooklyn, NY 11229`,
     highCopay: `The patient's plan has a copay of ... dollars.`,
     highDed: `The patient's deductible is ... dollars. We can only accept the patient as self-pay.`,
     memberIdCard: `To verify the patient's insurance, we need a scan of their ID card. Please provide it.`,
@@ -69,35 +69,25 @@
       position:'fixed', top:'80px', right:'20px', zIndex:9999,
       background:'rgba(255,255,255,0.95)', boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
       padding:'8px', borderRadius:'6px', fontFamily:'Arial,sans-serif', fontSize:'14px',
-      minWidth:'140px', cursor:'move', userSelect:'none'
+      width:'240px', userSelect:'none', resize:'both', overflow:'auto'
     });
 
     const header = document.createElement('div');
-    header.style.cssText = 'height:10px; margin-bottom:4px;';
+    header.style.cssText = 'height:10px; margin-bottom:4px; cursor:move';
     popup.appendChild(header);
 
     const headerBar = document.createElement('div');
     Object.assign(headerBar.style, {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '6px'
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px'
     });
 
     const title = document.createElement('div');
     title.textContent = 'Gmail Helper';
-    Object.assign(title.style, {
-      fontWeight: 'bold',
-      fontSize: '16px',
-      color: '#333'
-    });
+    Object.assign(title.style, { fontWeight: 'bold', fontSize: '16px', color: '#333' });
 
     const soundBtn = document.createElement('div');
     soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
-    Object.assign(soundBtn.style, {
-      cursor:'pointer',
-      fontSize:'16px'
-    });
+    Object.assign(soundBtn.style, { cursor:'pointer', fontSize:'16px' });
     soundBtn.title = 'Toggle sound';
     soundBtn.addEventListener('click', () => {
       soundEnabled = !soundEnabled;
@@ -143,7 +133,9 @@
     ];
     buttons.forEach(([label, key]) => {
       const btn = document.createElement('button'); btn.textContent = label;
-      Object.assign(btn.style, { width:'100%', margin:'4px 0', padding:'4px', border:'none', borderRadius:'4px', cursor:'pointer', background:'#eee', textAlign:'center' });
+      Object.assign(btn.style, {
+        width:'100%', margin:'4px 0', padding:'4px', border:'none', borderRadius:'4px', cursor:'pointer', background:'#eee', textAlign:'center'
+      });
       btn.addEventListener('click', () => {
         if (key === 'answers') {
           if (!answersExpanded) {
@@ -156,11 +148,15 @@
             ].forEach(([subLabel, subKey]) => {
               const subBtn = document.createElement('button');
               subBtn.textContent = subLabel;
-              Object.assign(subBtn.style, { width:'100%', margin:'2px 0', padding:'4px', border:'none', borderRadius:'4px', cursor:'pointer', background:'#f9f9f9', textAlign:'left' });
+              Object.assign(subBtn.style, {
+                width:'100%', margin:'2px 0', padding:'4px', border:'none', borderRadius:'4px', cursor:'pointer', background:'#f9f9f9', textAlign:'center'
+              });
               subBtn.addEventListener('click', () => {
                 insertSnippet(subKey);
                 Array.from(popup.querySelectorAll('button')).forEach(b => {
-                  if (['Authorization HCP', 'High Copay', 'High Ded', 'Member id card', 'Medicare id card'].includes(b.textContent)) {
+                  if ([
+                    'Authorization HCP', 'High Copay', 'High Ded', 'Member id card', 'Medicare id card'
+                  ].includes(b.textContent)) {
                     b.remove();
                   }
                 });
