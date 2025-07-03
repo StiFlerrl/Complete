@@ -5,6 +5,7 @@
 // @description  Info check + alerts with field comparison and plan detection
 // @match        https://emdspc.emsow.com/*
 // @grant        none
+// @homepageURL  https://github.com/StiFlerrl/Complete
 // @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.js
 // @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.js
 
