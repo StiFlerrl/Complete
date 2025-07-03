@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Info check + alerts (v1.3)
 // @namespace    http://tampermonkey.net/
-// @version      1.31
+// @version      1.4
 // @description  Info check + alerts with field comparison and plan detection
 // @match        https://emdspc.emsow.com/*
 // @grant        none
