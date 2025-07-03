@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Info check + alerts (v1.3)
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.31
 // @description  Info check + alerts with field comparison and plan detection
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -75,7 +75,7 @@
     if (detailsTable) combinedText += ' ' + detailsTable.textContent.toLowerCase();
 
     const planMap = {
-      'somos ipa':                         'SOMOS IPA план обнаружен! Empire - Не стадии можем разрешить\n Если это HIP, необходимо страховку выбрать HIP SOMOS',
+      'somos ipa':                         'SOMOS IPA план обнаружен! Empire - Не стадии можем разрешить. Если это HIP, необходимо страховку выбрать HIP SOMOS',
       'homefirst':                         'HOMEFIRST план обнаружен! Elderplan HOMEFIRST cant accept',
       'benefit risk management services':  'Benefit & Risk management services план обнаружен!',
       'vip reserve hmo':                   'VIP RESERVE HMO план обнаружен!',
