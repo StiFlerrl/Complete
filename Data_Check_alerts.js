@@ -74,7 +74,7 @@
     if (detailsTable) combinedText += ' ' + detailsTable.textContent.toLowerCase();
 
     const planMap = {
-      'somos ipa':                         'SOMOS IPA план обнаружен! Не стадии можем разрешить',
+      'somos ipa':                         'SOMOS IPA план обнаружен! Empire - Не стадии можем разрешить/n Если это HIP, необходимо страховку выбрать HIP SOMOS',
       'homefirst':                         'HOMEFIRST план обнаружен! Elderplan HOMEFIRST cant accept',
       'benefit risk management services':  'Benefit & Risk management services план обнаружен!',
       'vip reserve hmo':                   'VIP RESERVE HMO план обнаружен!',
@@ -93,7 +93,7 @@
       'payor identification c7':           'Payor Identification: C7 план обнаружен! Out of network with Centers Plan',
       'ny community plan for adults':      'Plan for Adults - Возможно требуется направление, необходимо проверить PCP',
       'plan for adults':                   'Plan for Adults - Возможно требуется направление, необходимо проверить PCP',
-      'hip hmo preferred':                 'HIP HMO PREFERRED - Возможно требуется направление, необходимо проверить PCP./n Если это HIP, необходимо страховку выбрать HIP SOMOS '
+      'hip hmo preferred':                 'HIP HMO PREFERRED - Возможно требуется направление, необходимо проверить PCP'
     };
 
     const plans = [];
