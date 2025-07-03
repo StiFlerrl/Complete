@@ -1,14 +1,13 @@
 // ==UserScript==
 // @name         Info check + alerts (v1.3)
 // @namespace    http://tampermonkey.net/
-// @version      1.32
+// @version      1.31
 // @description  Info check + alerts with field comparison and plan detection
 // @match        https://emdspc.emsow.com/*
 // @grant        none
 // @homepageURL  https://github.com/StiFlerrl/Complete
-// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.js
-// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.js
-
+// @updateURL    https://github.com/StiFlerrl/Complete/raw/main/Data_Check_alerts.js
+// @downloadURL  https://github.com/StiFlerrl/Complete/raw/main/Data_Check_alerts.js
 // ==/UserScript==
 
 (function() {
