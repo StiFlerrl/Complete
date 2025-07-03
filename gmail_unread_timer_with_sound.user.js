@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail helper
 // @namespace    http://tampermonkey.net/
-// @version      1.03
+// @version      1.04
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
