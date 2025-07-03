@@ -93,7 +93,7 @@
       'payor identification c7':           'Payor Identification: C7 план обнаружен! Out of network with Centers Plan',
       'ny community plan for adults':      'Plan for Adults - Возможно требуется направление, необходимо проверить PCP',
       'plan for adults':                   'Plan for Adults - Возможно требуется направление, необходимо проверить PCP',
-      'hip hmo preferred':                 'HIP HMO PREFERRED - Возможно требуется направление, необходимо проверить PCP'
+      'hip hmo preferred':                 'HIP HMO PREFERRED - Возможно требуется направление, необходимо проверить PCP./n Если это HIP, необходимо страховку выбрать HIP SOMOS '
     };
 
     const plans = [];
