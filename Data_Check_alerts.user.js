@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Info check + alerts (v1.3)
 // @namespace    http://tampermonkey.net/
-// @version      1.32
+// @version      1.33
 // @description  Info check + alerts with field comparison and plan detection
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -81,7 +81,7 @@
       'senior health partners':            'SENIOR HEALTH PARTNERS план обнаружен!',
       'small group epo':                   'Small Group EPO план обнаружен!',
       'platinum total epo':                'Platinum Total EPO план обнаружен!',
-      'signature':                         'Signature план обнаружен! Copay 7-$25, 9-$60',
+      'signature':                         'Signature план обнаружен! Copay 7-$60, 9-$25',
       'lppo aarp':                         'Lppo AARP план обнаружен! Проверить Network Participation/Copay',
       'giveback open':                     'Giveback open план обнаружен! Wellcare Copay $350',
       'premium open':                      'Premium Open план обнаружен! Wellcare Copay $150',
