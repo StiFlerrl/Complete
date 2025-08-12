@@ -1,12 +1,12 @@
 // ==UserScript==
-// @name         Info check + alerts (v1.3)
+// @name         Info check + alerts (v1.4)
 // @namespace    http://tampermonkey.net/
-// @version      1.33
-// @description  Info check + alerts with field comparison and plan detection
+// @version      1.4
+// @description  Info check + alerts
 // @match        https://emdspc.emsow.com/*
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.user.js
-// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.user.js
+// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.js
+// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.js
 // ==/UserScript==
 
 (function() {
@@ -37,6 +37,7 @@
   function compareData(modal) {
     const sel = document.querySelector('div.x-grid3-row-selected .column-patient.app-overaction-body');
     if (!sel) return;
+
     const title = sel.querySelector('span[qtitle]')?.textContent.trim() || '';
     let [gridLast, gridFirst] = title.includes(',')
       ? title.split(',').map(s => s.trim())
@@ -69,24 +70,31 @@
     const winBody = modal.closest('div.x-window-body') || modal;
     const detailsTable = winBody.querySelector('table.eligibility-details');
 
-    let combinedText = modal.textContent.toLowerCase();
-    if (detailsTable) combinedText += ' ' + detailsTable.textContent.toLowerCase();
+    let combinedText = (modal.textContent || '').toLowerCase();
+    if (detailsTable) combinedText += ' ' + (detailsTable.textContent || '').toLowerCase();
 
-    const planMap = {
-      'somos ipa':                         'SOMOS IPA план обнаружен! Empire - Не стадии можем разрешить. Если это HIP, необходимо страховку выбрать HIP SOMOS',
+    const planMapRaw = {
+      'bronze':                            'Bronze план обнаружен! Проверь Deductible!',
+      'platinum':                          'Platinum план обнаружен! Проверь Deductible!',
+      'gold':                              'Gold план обнаружен! Проверь Deductible!',
+      'silver':                            'Silver план обнаружен! Проверь Deductible!',
+      'leaf':                              'Leaf план обнаружен! Проверь Deductible!',
+      'somos ipa':                         'SOMOS IPA план обнаружен! Не стадии можем разрешить',
       'homefirst':                         'HOMEFIRST план обнаружен! Elderplan HOMEFIRST cant accept',
+      'benefit & risk management services':'Benefit & Risk management services план обнаружен!',
       'benefit risk management services':  'Benefit & Risk management services план обнаружен!',
       'vip reserve hmo':                   'VIP RESERVE HMO план обнаружен!',
       'vip dual reverse':                  'VIP DUAL REVERSE план обнаружен!',
       'senior health partners':            'SENIOR HEALTH PARTNERS план обнаружен!',
       'small group epo':                   'Small Group EPO план обнаружен!',
       'platinum total epo':                'Platinum Total EPO план обнаружен!',
-      'signature':                         'Signature план обнаружен! Copay 7-$60, 9-$25',
+      'signature':                         'Signature план обнаружен! Copay 7-$25, 9-$60',
       'lppo aarp':                         'Lppo AARP план обнаружен! Проверить Network Participation/Copay',
       'giveback open':                     'Giveback open план обнаружен! Wellcare Copay $350',
       'premium open':                      'Premium Open план обнаружен! Wellcare Copay $150',
       'premium':                           'Premium план обнаружен! Wellcare Copay $250',
       'assist open':                       'ASSIST OPEN обнаружен! Wellcare Copay $100',
+      'simple open (ppo)':                 'Simple Open план обнаружен! Wellcare Copay $500',
       'simple open':                       'Simple Open план обнаружен! Wellcare Copay $500',
       'simple':                            'Simple план обнаружен! Wellcare Copay $500',
       'payor identification c7':           'Payor Identification: C7 план обнаружен! Out of network with Centers Plan',
@@ -95,17 +103,30 @@
       'hip hmo preferred':                 'HIP HMO PREFERRED - Возможно требуется направление, необходимо проверить PCP'
     };
 
+    const planMap = Object.fromEntries(
+      Object.entries(planMapRaw).map(([k, v]) => [k.toLowerCase(), v])
+    );
+
     const plans = [];
+    const seen = new Set();
     Object.entries(planMap).forEach(([key, message]) => {
-      if (combinedText.includes(key)) plans.push(message);
+      if (combinedText.includes(key) && !seen.has(message)) {
+        if (key === 'simple open (ppo)') {
+          seen.add('Simple Open план обнаружен! Wellcare Copay $500');
+          plans.push('Simple Open план обнаружен! Wellcare Copay $500');
+        } else {
+          seen.add(message);
+          plans.push(message);
+        }
+      }
     });
 
     let hasPair = false;
     if (detailsTable) {
       const row2 = detailsTable.querySelector('tbody tr:nth-child(2)');
       if (row2) {
-        const firstTxt  = row2.querySelector('td:first-child .eligibility-service-type')?.textContent.trim();
-        const secondTxt = row2.querySelector('td:last-child div:nth-child(2)')?.textContent.trim();
+        const firstTxt  = row2.querySelector('td:first-child .eligibility-coverage .eligibility-service-type')?.textContent?.trim();
+        const secondTxt = row2.querySelector('td:last-child  .eligibility-coverage div:nth-child(2)')?.textContent?.trim();
         if (
           firstTxt === '30: Health Benefit Plan Coverage' &&
           secondTxt?.startsWith('Eligibility: Contact Following Entity for Eligibility or Benefit Information')
