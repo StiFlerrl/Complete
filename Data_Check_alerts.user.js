@@ -5,6 +5,8 @@
 // @description  
 // @match        https://emdspc.emsow.com/*
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.user.js
+// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.user.js
 // ==/UserScript==
 
 (function () {
