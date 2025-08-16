@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Info check + alerts
 // @namespace    http://tampermonkey.net/
-// @version      2.0
-// @description  
+// @version      2.1
+// @description  Fix offset
 // @match        https://emdspc.emsow.com/*
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.user.js
@@ -12,30 +12,35 @@
 (function () {
   'use strict';
 
-  const WATCH_WINDOW_MS = 20000;
   const STALE_DAYS = 30;
-  const BOTTOM_SPACER_PX = 180;
-  const DAY_MS = 24 * 3600 * 1000;
-
-  // ---------- Styles
-  (function injectStyles(){
-    const css = `
-      .x-window-body{ padding-bottom:0 !important; }
-      .x-window-body .eligibility-coverage,
-      .x-window-body .eligibility-coverage *{ white-space:normal !important; }
-      .piv-bottom-spacer{ height:${BOTTOM_SPACER_PX}px; width:100% !important; display:block; flex:0 0 auto; }
-    `;
-    const style = document.createElement('style');
-    style.textContent = css; document.head.appendChild(style);
-  })();
+  const MIN_SCROLL_H = 220;
+  const EXTRA_BOTTOM = 16;
+  const TAB_LAG = { Primary: 300, Secondary: 800, Tertiary: 600, Additional: 700 };
+  const TAB_ORDER = { Primary: 1, Secondary: 2, Tertiary: 3, Additional: 4 };
 
   const norm = s => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const isVisible = el => !!(el && el.offsetParent) && getComputedStyle(el).visibility !== 'hidden';
 
-  const isVisible = el => {
-    if (!el || !(el instanceof Element)) return false;
-    if (el.closest('.x-hide-display')) return false;
-    const cs = getComputedStyle(el);
-    return !(cs.display === 'none' || cs.visibility === 'hidden');
+  // ---------- styles ----------
+  (function css() {
+    const st = document.createElement('style');
+    st.textContent = `
+      .piv-elig-win .eligibility-coverage, .piv-elig-win .eligibility-coverage *{white-space:normal!important}
+      .piv-elig-win .eligibility-details td, .piv-elig-win .eligibility-info td{white-space:normal!important;word-break:break-word!important;overflow-wrap:anywhere!important}
+      .piv-agg{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0;align-items:stretch}
+      .piv-card{flex:none;padding:10px;border-radius:4px;border:2px solid;line-height:1.4;font-size:14px}
+    `;
+    document.head.appendChild(st);
+  })();
+
+  // ---------- tab helpers ----------
+  const canonicalTab = raw => {
+    const head = (raw || '').split(':')[0].trim().toLowerCase();
+    if (head.startsWith('primary'))   return 'Primary';
+    if (head.startsWith('secondary')) return 'Secondary';
+    if (head.startsWith('tertiary'))  return 'Tertiary';
+    if (head.startsWith('additional'))return 'Additional';
+    return 'Primary';
   };
 
   const getActivePanel = winBody =>
@@ -43,142 +48,120 @@
 
   const getActiveTabLabel = winBody => {
     const n = winBody.closest('.x-window')?.querySelector('.x-tab-strip .x-tab-strip-active .x-tab-strip-text');
-    const t = n?.textContent?.trim() || '';
-    if (/^Primary/i.test(t)) return 'Primary';
-    if (/^Secondary/i.test(t)) return 'Secondary';
-    if (/^Tertiary/i.test(t)) return 'Tertiary';
-    return t.includes('Secondary') ? 'Secondary' : t.includes('Tertiary') ? 'Tertiary' : 'Primary';
+    return canonicalTab(n?.textContent || '');
   };
 
+  // ---------- readiness waiters ----------
   function waitForReadyChange(winBody, prevPanel, prevSig, cb, timeout = 15000) {
-    const start = Date.now();
+    const t0 = Date.now();
     (function tick() {
       const p = getActivePanel(winBody);
       const sig = norm(p.textContent);
-      const changed = (p !== prevPanel) || (sig && sig !== prevSig);
-      if (changed || Date.now() - start > timeout) { cb(); return; }
+      if (p !== prevPanel || (sig && sig !== prevSig) || Date.now() - t0 > timeout) { cb(); return; }
       setTimeout(tick, 120);
     })();
   }
 
   function waitStable(panel, cb, timeout = 12000, quietMs = 700) {
-    const start = Date.now();
-    let lastLen = (panel.textContent || '').length;
-    let lastChange = Date.now();
+    const t0 = Date.now();
+    let last = (panel.textContent || '').length;
+    let ts = Date.now();
     const iv = setInterval(() => {
-      const curLen = (panel.textContent || '').length;
-      if (curLen !== lastLen) { lastLen = curLen; lastChange = Date.now(); }
-      if (Date.now() - lastChange >= quietMs || Date.now() - start >= timeout) {
-        clearInterval(iv); cb();
-      }
-    }, 120);
+      const cur = (panel.textContent || '').length;
+      if (cur !== last) { last = cur; ts = Date.now(); }
+      if (Date.now() - ts >= quietMs || Date.now() - t0 >= timeout) { clearInterval(iv); cb(); }
+    }, 140);
   }
 
+  // ---------- aggregator ----------
+  function findTabStripHeader(winBody){
+    return winBody.closest('.x-window')?.querySelector('.x-tab-panel-header') ||
+           winBody.closest('.x-window')?.querySelector('.x-tab-strip-wrap') ||
+           winBody.closest('.x-window')?.querySelector('.x-tab-strip') || null;
+  }
+  function ensureAgg(winBody) {
+    let box = winBody.querySelector('.piv-agg');
+    if (box) return box;
+    const header = findTabStripHeader(winBody);
+    box = document.createElement('div');
+    box.className = 'piv-agg';
+    if (header && header.parentNode) header.parentNode.insertBefore(box, header);
+    else winBody.insertBefore(box, winBody.firstChild);
+    return box;
+  }
+  function reorderAgg(agg) {
+    const cards = Array.from(agg.querySelectorAll('.piv-card'));
+    cards.sort((a,b)=> (TAB_ORDER[a.dataset.tab]||99)-(TAB_ORDER[b.dataset.tab]||99));
+    cards.forEach(c => agg.appendChild(c));
+  }
+  function renderSection(winBody, tab, cards) {
+    const agg = ensureAgg(winBody);
+    agg.querySelectorAll(`.piv-card[data-tab="${tab}"]`).forEach(n => n.remove());
+    cards.forEach(n => { n.classList.add('piv-card'); n.dataset.tab = tab; agg.appendChild(n); });
+    reorderAgg(agg);
+  }
+
+  // ---------- scroller sizing ----------
+  function getActiveScroller(winBody) {
+    const activePanel = getActivePanel(winBody);
+    const q = '.x-panel-body.x-panel-body-noheader.x-panel-body-noborder';
+    const list = Array.from(activePanel.querySelectorAll(q)).filter(isVisible);
+    if (!list.length) {
+      const all = Array.from(winBody.querySelectorAll(q)).filter(isVisible);
+      if (!all.length) return null;
+      return all[0];
+    }
+    let best = null, bestScore = -1;
+    for (const el of list) {
+      const rect = el.getBoundingClientRect();
+      if (rect.height < 80) continue;
+      const score = el.scrollHeight - el.clientHeight;
+      if (score > bestScore) { bestScore = score; best = el; }
+    }
+    return best || list[0];
+  }
+
+  function adjustScroller(winBody) {
+    try {
+      const sc = getActiveScroller(winBody);
+      if (!sc) return;
+      const winRect = winBody.getBoundingClientRect();
+      const scRect = sc.getBoundingClientRect();
+      let footerH = 56;
+      const foot = winBody.querySelector('.x-window-bbar, .x-panel-bbar, .x-dlg-btm, .x-window-footer, .x-panel-btns');
+      if (foot) footerH = Math.max(foot.getBoundingClientRect().height, 40);
+      let h = Math.floor(winRect.bottom - scRect.top - footerH - EXTRA_BOTTOM);
+      if (h < MIN_SCROLL_H) h = MIN_SCROLL_H;
+      sc.style.height = h + 200 +'px';
+      sc.style.maxHeight = h + 50 + 'px';
+      sc.style.overflow = 'auto';
+    } catch {}
+  }
+
+  function adjustRepeated(winBody, ms = 1600) {
+    if (winBody.__pivAdjTick) clearInterval(winBody.__pivAdjTick);
+    const end = Date.now() + ms;
+    adjustScroller(winBody);
+    winBody.__pivAdjTick = setInterval(() => {
+      adjustScroller(winBody);
+      if (Date.now() > end) { clearInterval(winBody.__pivAdjTick); winBody.__pivAdjTick = null; }
+    }, 150);
+  }
+
+  // ---------- text collection ----------
   function collectEligibilityText(panel) {
     const buckets = new Set();
     panel.querySelectorAll('*').forEach(n => {
-      if (!(n instanceof Element)) return;
       const cls = n.className || '';
       if (/\beligibility/i.test(cls) && isVisible(n)) buckets.add(n);
     });
     if (!buckets.size) buckets.add(panel);
     const out = [];
-    buckets.forEach(n => {
-      if (n.closest('.piv-agg') || n.closest('.piv-alert-container')) return;
-      out.push(n.textContent || '');
-    });
+    buckets.forEach(n => { if (!n.closest('.piv-agg')) out.push(n.textContent || ''); });
     return norm(out.join(' '));
   }
 
-  function ensureAgg(winBody) {
-    let box = winBody.querySelector('.piv-agg');
-    if (box) return box;
-    box = document.createElement('div');
-    box.className = 'piv-agg';
-    box.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 6px;align-items:stretch;';
-    winBody.insertBefore(box, winBody.firstChild);
-    return box;
-  }
-
-  function renderSection(winBody, tab, nodes) {
-    const agg = ensureAgg(winBody);
-    agg.querySelectorAll(`.piv-sec[data-tab="${tab}"]`).forEach(n => n.remove());
-    nodes.forEach(n => { n.classList.add('piv-sec'); n.dataset.tab = tab; agg.appendChild(n); });
-  }
-
-  function markTabScanned(winBody, tab) {
-    if (!winBody.__pivScanned) winBody.__pivScanned = {};
-    winBody.__pivScanned[tab] = true;
-  }
-  function isTabScanned(winBody, tab) {
-    return !!(winBody.__pivScanned && winBody.__pivScanned[tab]);
-  }
-
-  function startPanelWatcher(winBody, tab, durationMs = WATCH_WINDOW_MS) {
-    if (!winBody.__pivWatches) winBody.__pivWatches = {};
-    if (winBody.__pivWatches[tab]) return;
-
-    const panel = getActivePanel(winBody);
-    let debounce;
-    const mo = new MutationObserver(() => {
-      clearTimeout(debounce);
-      debounce = setTimeout(() => {
-        if (!isTabScanned(winBody, tab)) scanActiveTab(winBody, /*internal*/true);
-      }, 250);
-    });
-    mo.observe(panel, { childList: true, subtree: true, characterData: true });
-    winBody.__pivWatches[tab] = mo;
-
-    setTimeout(() => {
-      try { mo.disconnect(); } catch(_){ }
-      markTabScanned(winBody, tab);
-      delete winBody.__pivWatches[tab];
-    }, durationMs);
-  }
-
-  function bindTabClicks(winBody) {
-    if (winBody.dataset.pivTabsBound === '1') return;
-    winBody.dataset.pivTabsBound = '1';
-    const strip = winBody.closest('.x-window')?.querySelector('.x-tab-strip');
-    if (!strip) return;
-
-    strip.addEventListener('click', () => {
-      const prevPanel = getActivePanel(winBody);
-      const prevSig = norm(prevPanel.textContent);
-      waitForReadyChange(winBody, prevPanel, prevSig, () => {
-        const panel = getActivePanel(winBody);
-        const tab = getActiveTabLabel(winBody);
-        if (isTabScanned(winBody, tab)) return;
-        const extraLag = (tab === 'Secondary' ? 900 : 300);
-        setTimeout(() => waitStable(panel, () => {
-          scanActiveTab(winBody, /*internal*/false);
-          startPanelWatcher(winBody, tab, WATCH_WINDOW_MS);
-        }), extraLag);
-      });
-    }, true);
-  }
-
-  new MutationObserver(muts => {
-    for (const m of muts) for (const node of m.addedNodes) {
-      if (!(node instanceof HTMLElement)) continue;
-      const subHdr = node.querySelector('th[colspan="2"]');
-      if (!subHdr?.textContent.trim().startsWith('Subscriber:')) continue;
-      const winBody = node.closest('div.x-window-body') || node;
-      if (!winBody || winBody.dataset.pivInited === '1') continue;
-      winBody.dataset.pivInited = '1';
-      ensureAgg(winBody);
-      bindTabClicks(winBody);
-      const p = getActivePanel(winBody);
-      setTimeout(() => waitStable(p, () => {
-        const tab = getActiveTabLabel(winBody);
-        if (!isTabScanned(winBody, tab)) {
-          scanActiveTab(winBody, /*internal*/false);
-          startPanelWatcher(winBody, tab, WATCH_WINDOW_MS);
-        }
-      }), 250);
-    }
-  }).observe(document.body, { childList: true, subtree: true });
-
+  // ---------- history date ----------
   function parseUSDateTimeFlexible(s) {
     const m = s && s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i);
     if (!m) return null;
@@ -191,87 +174,32 @@
     return new Date(YYYY, MM - 1, DD, hh, mm, ss);
   }
 
-  function historyDateFromHistoryStrip(winBody) {
-    const winText = ((winBody.closest('.x-window') || document).textContent || '').replace(/\u00A0/g, ' ');
-    const idx = winText.toLowerCase().indexOf('history:');
-    if (idx !== -1) {
-      const seg = winText.slice(idx, idx + 400);
-      const m = seg.match(/\(\s*([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}(?:\s+[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?\s*(?:AM|PM)?)?)\s*\)/i);
-      if (m) {
+  function robustHistoryDate(winBody) {
+    const root = winBody.closest('.x-window') || document;
+    const txt = root.textContent || '';
+    const reParen = /\(\s*([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}(?:\s+[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?\s*(?:AM|PM)?)?)\s*\)/gi;
+    let m, best = null;
+    while ((m = reParen.exec(txt))) {
+      const idx = m.index;
+      const ctx = txt.slice(Math.max(0, idx - 160), Math.min(txt.length, idx + 160)).toLowerCase();
+      if (/(member\s*id|history|eligibility)/.test(ctx)) {
         const d = parseUSDateTimeFlexible(m[1]);
-        if (d) return d;
+        if (d && (!best || d > best)) best = d;
       }
     }
-    const m2 = winText.match(/Member\s*ID[^()\n\r]*\(\s*([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}(?:\s+[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?\s*(?:AM|PM)?)?)\s*\)/i);
-    if (m2) return parseUSDateTimeFlexible(m2[1]);
-    return null;
-  }
-
-  function robustHistoryDate(winBody, panel) {
-    const txtPanel = (panel?.textContent || '').replace(/\u00A0/g, ' ');
-    const txtWin   = ((winBody.closest('.x-window') || document).textContent || '').replace(/\u00A0/g, ' ');
-
-    const dateRe = /(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/gi;
-    const negativeCtx = /(date\s*of\s*birth|\bdob\b|birth\s*date|effective\s*date|coverage\s*(?:from|to|through)|eligibility\s*from|eligibility\s*to|start\s*date|end\s*date)/i;
-    const positiveCtx = /(member\s*id|history|eligibility|as\s*of|checked|last\s*updated|response|generated|created|update)/i;
-
-    let best = null;
-    function scan(raw) {
-      let m;
-      while ((m = dateRe.exec(raw))) {
-        const d = parseUSDateTimeFlexible(m[0]);
-        if (!d) continue;
-        const idx = m.index;
-        const before = raw.slice(Math.max(0, idx - 140), idx).toLowerCase();
-        const after  = raw.slice(dateRe.lastIndex, Math.min(raw.length, dateRe.lastIndex + 140)).toLowerCase();
-        const ctx = before + ' ' + after;
-        if (negativeCtx.test(ctx)) continue;
-        if (!positiveCtx.test(ctx)) continue;
-        if (!best || d > best) best = d;
-      }
-    }
-    scan(txtPanel); scan(txtWin);
+    if (!best) { reParen.lastIndex = 0; const m2 = reParen.exec(txt); if (m2) best = parseUSDateTimeFlexible(m2[1]); }
     return best;
   }
 
-  function findScrollContainer(panel) {
-    const target = panel.querySelector('table.eligibility-details, table.eligibility-info') || panel;
-    let cur = target.parentElement;
-    while (cur && cur !== panel && cur instanceof Element) {
-      const cs = getComputedStyle(cur);
-      const isScroll = /(auto|scroll)/i.test(cs.overflowY) || cur.scrollHeight > cur.clientHeight + 10;
-      if (isScroll) return cur;
-      cur = cur.parentElement;
-    }
-    return panel;
-  }
-
-  function hasExtraInsuranceStrict(panel) {
-    const eligTriggers = [
-      /eligibility:\s*contact\s*following\s*entity\s*for\s*eligibility\s*or\s*benefit\s*information/i,
-      /eligibility:\s*other\s*or\s*additional\s*pay(?:or|er)/i
-    ];
-    const blocks = panel.querySelectorAll('.eligibility-coverage');
-    for (const b of blocks) {
-      const svc = norm(b.querySelector('.eligibility-service-type')?.textContent);
-      if (svc !== '30: health benefit plan coverage') continue;
-      const txt = norm(b.textContent);
-      const cq  = /\bcq:\s*case\s*management\b/i.test(txt);
-      const hasElig = eligTriggers.some(re => re.test(txt));
-      if (hasElig || (cq && /contact\s*following\s*entity\s*for\s*eligibility\s*or\s*benefit\s*information/i.test(txt))) return true;
-    }
-    return false;
-  }
-
-  function scanActiveTab(winBody, internal) {
+  // ---------- main scan ----------
+  function scanActiveTab(winBody, { force = false } = {}) {
     const panel = getActivePanel(winBody);
-    const tab = getActiveTabLabel(winBody) || 'Primary';
-    if (isTabScanned(winBody, tab) && !internal) return;
+    const tab = getActiveTabLabel(winBody);
 
-    panel.querySelectorAll('.piv-alert-container').forEach(n => n.remove());
-    panel.querySelectorAll('.piv-bottom-spacer').forEach(n => n.remove());
+    adjustRepeated(winBody);
 
-    // 1) grid values
+    if (!force && winBody.__pivScanned?.[tab]) return;
+
     const sel = document.querySelector('div.x-grid3-row-selected .column-patient.app-overaction-body');
     let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
     if (sel) {
@@ -279,8 +207,8 @@
       if (title.includes(',')) [gridLast, gridFirst] = title.split(',').map(s => s.trim());
       else { const p = title.split(/\s+/); gridFirst = p.shift() || ''; gridLast = p.join(' '); }
       sel.querySelectorAll('table.app-tip-table tr').forEach(r => {
-        if (r.querySelector('th')?.textContent.trim().toLowerCase() === 'dob:')
-          procDOB = r.querySelector('td')?.textContent.trim() || '';
+        const th = r.querySelector('th')?.textContent.trim().toLowerCase();
+        if (th === 'dob:') procDOB = r.querySelector('td')?.textContent.trim() || '';
       });
       procGender = sel.querySelector('img[qtip]')?.getAttribute('qtip')?.trim() || '';
     }
@@ -314,180 +242,267 @@
     if (!matchedSimple && /\bsimple\b/i.test(text))       { plans.push('Simple план обнаружен! Wellcare Copay $500'); }
 
     add(/\bsomos\b/i,                      'SOMOS IPA план обнаружен! Не стадии можем разрешить');
-    add(/\bhome\s*first\b|\bhomefirst\b/i, 'HOMEFIRST план обнаружен! Elderplan HOMEFIRST cant accept');
-    add(/\bbenefit\s*&?\s*risk\s*management\s*services\b/i, 'Benefit & Risk management services план обнаружен!');
-    add(/\bvip\s*reserve\s*hmo\b/i,        'VIP RESERVE HMO план обнаружен!');
-    add(/\bvip\s*dual\s*reverse\b/i,       'VIP DUAL REVERSE план обнаружен!');
-    add(/\bsenior\s*health\s*partners\b/i, 'SENIOR HEALTH PARTNERS план обнаружен!');
-    add(/\bsmall\s*group\s*epo\b/i,        'Small Group EPO план обнаружен!');
-    add(/\bplatinum\s*total\s*epo\b/i,     'Platinum Total EPO план обнаружен!');
+    add(/\bhome\s*first\b|\bhomefirst\b/i,'HOMEFIRST план обнаружен! Elderplan HOMEFIRST cant accept');
+    add(/\bbenefit\s*&?\s*risk\s*management\s*services\b/i,'Benefit & Risk management services план обнаружен!');
+    add(/\bvip\s*reserve\s*hmo\b/i,       'VIP RESERVE HMO план обнаружен!');
+    add(/\bvip\s*dual\s*reverse\b/i,      'VIP DUAL REVERSE план обнаружен!');
+    add(/\bsenior\s*health\s*partners\b/i,'SENIOR HEALTH PARTNERS план обнаружен!');
+    add(/\bsmall\s*group\s*epo\b/i,       'Small Group EPO план обнаружен!');
+    add(/\bplatinum\s*total\s*epo\b/i,    'Platinum Total EPO план обнаружен!');
     add(/\bsignature\b/i,                  'Signature план обнаружен! Copay 7-$25, 9-$60');
     add(/\blppo\s*aarp\b/i,                'Lppo AARP план обнаружен! Проверить Network Participation/Copay');
     add(/\bgiveback\s*open\b/i,            'Giveback open план обнаружен! Wellcare Copay $350');
     add(/\bpremium\s*open\b/i,             'Premium Open план обнаружен! Wellcare Copay $150');
-    add(/\bpremium\b/i,                    'Premium план обнаружен! Проверь Deductible!', !/\bpremium\s*open\b/i.test(text));
+    add(/\bpremium\b/i,                    'Premium план обнаружен! Wellcare Copay $250', !/\bpremium\s*open\b/i.test(text));
     add(/\bassist\s*open\b/i,              'ASSIST OPEN обнаружен! Wellcare Copay $100');
-    add(/\bpayor\s*identification[:\s]*c7\b/i, 'Payor Identification: C7 план обнаружен! Out of network with Centers Plan');
-    add(/\b(?:ny\s*community\s*)?plan\s*for\s*adults\b/i, 'Plan for Adults - Возможно требуется направление, необходимо проверить PCP');
-    add(/\bhip\s*hmo\s*preferred\b/i,      'HIP HMO PREFERRED - Возможно требуется направление, необходимо проверить PCP');
-
+    add(/\bpayor\s*identification[:\s]*c7\b/i,'Payor Identification: C7 план обнаружен! Out of network with Centers Plan');
+    add(/\b(?:ny\s*community\s*)?plan\s*for\s*adults\b/i,'Plan for Adults - Возможно требуется направление, необходимо проверить PCP');
+    add(/\bhip\s*hmo\s*preferred\b/i,     'HIP HMO PREFERRED - Возможно требуется направление, необходимо проверить PCP');
     add(/\bbronze\b/i,   'Bronze план обнаружен! Проверь Deductible!');
     add(/\bplatinum\b/i, 'Platinum план обнаружен! Проверь Deductible!', !/\bplatinum\s*total\s*epo\b/i.test(text));
     add(/\bgold\b/i,     'Gold план обнаружен! Проверь Deductible!');
     add(/\bsilver\b/i,   'Silver план обнаружен! Проверь Deductible!');
     add(/\bleaf\b/i,     'Leaf план обнаружен! Проверь Deductible!');
 
-    // 4) Additional insurance — STRICT within the same coverage block (any column)
-    const hasPair = hasExtraInsuranceStrict(panel);
-
-// --- 5) Payor Identification ---
-let payorMsg = null;
-
-// ловим буквенно-цифровые коды (1–6 символов)
-const pm = (panel.textContent || '').match(/Payor\s*Identification:\s*([A-Za-z0-9]{2})\b/i);
-if (pm) {
-  const code = pm[1].toUpperCase();
-
-  // словарь расшифровок
-  const payorMap = {
-    '92': 'Payor Identification:92! Mainstream Обнаружен! Проверь Metroplus Health Plan, Inc',
-    'AA': 'Payor Identification:AA! HARP Обнаружен!',
-    'AC': 'Payor Identification:AC! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'AH': 'Payor Identification:AH! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'C2': 'Payor Identification:C2! Mainstream Обнаружен! Проверь Highmark Western & Northeastern NY',
-    'C3': 'Payor Identification:C3! HARP Обнаружен!',
-    'C7': 'Payor Identification:C7! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'CC': 'Payor Identification:CC! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'CD': 'Payor Identification:CD! HARP Обнаружен!',
-    'CG': 'Payor Identification:CG! Mainstream Обнаружен! Проверь Capital District Physician’s Health Plan',
-    'CH': 'Payor Identification:CH! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'CM': 'Payor Identification:CM! Medicaid Adv Plus Обнаружен!',
-    'CP': 'Payor Identification:CP! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'E7': 'Payor Identification:E7! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'EA': 'Payor Identification:EA! Medicaid Adv Plus Обнаружен!',
-    'ED': 'Payor Identification:ED! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'EE': 'Payor Identification:EE! HARP Обнаружен!',
-    'EH': 'Payor Identification:EH! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'FZ': 'Payor Identification:FZ! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'GD': 'Payor Identification:GD! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'H1': 'Payor Identification:H1! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'HA': 'Payor Identification:HA! Medicaid Adv Plus Обнаружен!',
-    'HC': 'Payor Identification:HC! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'HF': 'Payor Identification:HF! HARP Обнаружен!',
-    'HI': 'Payor Identification:HI! HARP Обнаружен!',
-    'HT': 'Payor Identification:HT! Mainstream Обнаружен! Проверь HIP of Greater NY',
-    '98': 'Payor Identification:98! Mainstream Обнаружен! Проверь HIP of Greater NY',
-    '99': 'Payor Identification:99! Mainstream Обнаружен! Проверь HIP of Greater NY',
-    'HU': 'Payor Identification:HU! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'HW': 'Payor Identification:HW! Mainstream Обнаружен! Проверь HIP Westchester',
-    'HY': 'Payor Identification:HY! Mainstream Обнаружен! Проверь HIP Nassau',
-    'IC': 'Payor Identification:IC! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'IE': 'Payor Identification:IE! Mainstream Обнаружен! Проверь Independent Health Association',
-    'IH': 'Payor Identification:IH! HARP Обнаружен!',
-    'IL': 'Payor Identification:IL! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'IS': 'Payor Identification:IS! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'KP': 'Payor Identification:KP! Mainstream Обнаружен! Проверь Anthem HP, LLC',
-    'KX': 'Payor Identification:KX! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'MA': 'Payor Identification:MA! HARP Обнаружен!',
-    'MC': 'Payor Identification:MC! Medicaid Adv Plus Обнаружен!',
-    'MH': 'Payor Identification:MH! Medicaid Adv Plus Обнаружен!',
-    'MO': 'Payor Identification:MO! Mainstream Обнаружен! Проверь United HealthCare of NY, Inc.',
-    'MP': 'Payor Identification:MP! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'MR': 'Payor Identification:MR! Mainstream Обнаружен! Проверь Excellus',
-    'MT': 'Payor Identification:MT! HARP Обнаружен!',
-    'MV': 'Payor Identification:MV! Mainstream Обнаружен! Проверь MVP, Inc.',
-    'NC': 'Payor Identification:NC! HARP Обнаружен!',
-    'OD': 'Payor Identification:OD! SNP Обнаружен!',
-    'OM': 'Payor Identification:OM! SNP Обнаружен!',
-    'PO': 'Payor Identification:PO! FIDA-IDD Обнаружен!',
-    'SF': 'Payor Identification:SF! Mainstream Обнаружен! Проверь HealthFirst PHSP, Inc.',
-    'SP': 'Payor Identification:SP! Mainstream Обнаружен! Проверь Fidelis Care New York',
-    'SW': 'Payor Identification:SW! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'TN': 'Payor Identification:TN! HARP Обнаружен!',
-    'TO': 'Payor Identification:TO! Mainstream Обнаружен! Проверь Molina Healthcare of New York Inc. (TONY)',
-    'TS': 'Payor Identification:TS! LTC Pace Обнаружен! Medicaid включает покрытие',
-    'UC': 'Payor Identification:UC! HARP Обнаружен!',
-    'UM': 'Payor Identification:UM! Medicaid Adv Plus Обнаружен!',
-    'VA': 'Payor Identification:VA! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'VC': 'Payor Identification:VC! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'VL': 'Payor Identification:VL! Partial LTC Обнаружен! Medicaid включает покрытие',
-    'VM': 'Payor Identification:VM! Medicaid Adv Plus Обнаружен!',
-    'VS': 'Payor Identification:VS! SNP Обнаружен!',
-    'YF': 'Payor Identification:YF! Medicaid Adv Plus Обнаружен!',
-    'YH': 'Payor Identification:YH! Medicaid Adv Plus Обнаружен!',
-    'YL': 'Payor Identification:YL! Medicaid Adv Plus Обнаружен!',
-    'YN': 'Payor Identification:YN! Medicaid Adv Plus Обнаружен!',
-    'YO': 'Payor Identification:YO! Medicaid Adv Plus Обнаружен!'
-  };
-
-  if (payorMap[code]) payorMsg = payorMap[code];
-}
-
-
-    let staleMsg = null;
-    const histDateStrict = historyDateFromHistoryStrip(winBody);
-    const histDateFallback = !histDateStrict ? robustHistoryDate(winBody, panel) : null;
-    const histDate = histDateStrict || histDateFallback;
-    if (histDate) {
-      const ageMs = Date.now() - histDate.getTime();
-      if (ageMs >= STALE_DAYS * DAY_MS) {
-        staleMsg = 'Отображаемая информация устарела, обновите данные через кнопку Update';
+    // доп. страховка (строго рядом: "30:" → "Eligibility: ...")
+    const covStr  = '30: health benefit plan coverage';
+    const eligTriggers = [
+      'eligibility: contact following entity for eligibility or benefit information',
+      'eligibility: other or additional payor',
+      'eligibility: other or additional payer'
+    ];
+    let hasPair = false;
+    const dt = panel.querySelector('table.eligibility-details');
+    if (dt) {
+      const row2 = dt.querySelector('tbody tr:nth-child(2)');
+      if (row2) {
+        const a = norm(row2.querySelector('td:first-child .eligibility-coverage .eligibility-service-type')?.textContent);
+        const right = norm(row2.querySelector('td:last-child  .eligibility-coverage')?.textContent);
+        const rightHasElig = eligTriggers.some(tr => right?.includes(tr));
+        const rightHasCQ = /\bcq:\s*case\s*management\b/i.test(right);
+        if (a === covStr && (rightHasElig || (rightHasCQ && /contact\s*following\s*entity/i.test(right)))) hasPair = true;
+      }
+    }
+    if (!hasPair) {
+      const t = norm(panel.textContent || '');
+      const i1 = t.indexOf(covStr);
+      if (i1 !== -1) {
+        const after = t.slice(i1, i1 + 800);
+        const reAfter = /(?:\bcq:\s*case\s*management\b[\s\S]{0,200})?eligibility:\s*(?:contact\s*following\s*entity\s*for\s*eligibility\s*or\s*benefit\s*information|other\s*or\s*additional\s*pay(?:or|er))/i;
+        hasPair = reAfter.test(after);
       }
     }
 
-    const nodes = [];
-
-    const boxCompare = document.createElement('div');
-    boxCompare.style.cssText = `
-      flex:none;
-      background:${mismatches.length ? '#fdd' : '#dfd'};
-      color:${mismatches.length ? '#900' : '#060'};
-      border:2px solid ${mismatches.length ? '#900' : '#060'};
-      padding:10px;border-radius:4px;font-size:14px;line-height:1.4;`;
-    boxCompare.innerHTML = mismatches.length
-      ? `<strong>[${tab}] ⚠️ Расхождения:</strong><br>${mismatches.join('<br>')}`
-      : `<strong>[${tab}] ✅ Все поля совпадают.</strong>`;
-    nodes.push(boxCompare);
-
-    if (plans.length) {
-      const boxPlan = document.createElement('div');
-      boxPlan.style.cssText = `flex:none;background:#eef;color:#036;border:2px solid #036; padding:10px;border-radius:4px;font-size:14px;line-height:1.4;`;
-      boxPlan.innerHTML = `<strong>[${tab}] ℹ️ План:</strong><br>${plans.join('<br>')}`;
-      nodes.push(boxPlan);
+    // Payor Identification (коды)
+    let payorMsg = null;
+    const pm = (panel.textContent || '').match(/Payor Identification:\s*([A-Za-z0-9]{2})\b/i);
+    if (pm) {
+      const code = pm[1].toUpperCase();
+      const map = {
+        '92':'Payor Identification:92! Mainstream Обнаружен! Проверь Metroplus Health Plan, Inc',
+        'AA':'Payor Identification:AA! HARP Обнаружен!',
+        'AC':'Payor Identification:AC! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'AH':'Payor Identification:AH! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'C2':'Payor Identification:C2! Mainstream Обнаружен! Проверь Highmark Western & Northeastern NY',
+        'C3':'Payor Identification:C3! HARP Обнаружен!',
+        'C7':'Payor Identification:C7! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'CC':'Payor Identification:CC! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'CD':'Payor Identification:CD! HARP Обнаружен!',
+        'CG':'Payor Identification:CG! Mainstream Обнаружен! Проверь Capital District Physician’s Health Plan',
+        'CH':'Payor Identification:CH! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'CM':'Payor Identification:CM! Medicaid Adv Plus Обнаружен!',
+        'CP':'Payor Identification:CP! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'E7':'Payor Identification:E7! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'EA':'Payor Identification:EA! Medicaid Adv Plus Обнаружен!',
+        'ED':'Payor Identification:ED! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'EE':'Payor Identification:EE! HARP Обнаружен!',
+        'EH':'Payor Identification:EH! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'FZ':'Payor Identification:FZ! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'GD':'Payor Identification:GD! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'H1':'Payor Identification:H1! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'HA':'Payor Identification:HA! Medicaid Adv Plus Обнаружен!',
+        'HC':'Payor Identification:HC! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'HF':'Payor Identification:HF! HARP Обнаружен!',
+        'HI':'Payor Identification:HI! HARP Обнаружен!',
+        'HT':'Payor Identification:HT! Mainstream Обнаружен! Проверь HIP of Greater NY',
+        '98':'Payor Identification:98! Mainstream Обнаружен! Проверь HIP of Greater NY',
+        '99':'Payor Identification:99! Mainstream Обнаружен! Проверь HIP of Greater NY',
+        'HU':'Payor Identification:HU! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'HW':'Payor Identification:HW! Mainstream Обнаружен! Проверь HIP Westchester',
+        'HY':'Payor Identification:HY! Mainstream Обнаружен! Проверь HIP Nassau',
+        'IC':'Payor Identification:IC! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'IE':'Payor Identification:IE! Mainstream Обнаружен! Проверь Independent Health Association',
+        'IH':'Payor Identification:IH! HARP Обнаружен!',
+        'IL':'Payor Identification:IL! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'IS':'Payor Identification:IS! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'KP':'Payor Identification:KP! Mainstream Обнаружен! Проверь Anthem HP, LLC',
+        'KX':'Payor Identification:KX! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'MA':'Payor Identification:MA! HARP Обнаружен!',
+        'MC':'Payor Identification:MC! Medicaid Adv Plus Обнаружен!',
+        'MH':'Payor Identification:MH! Medicaid Adv Plus Обнаружен!',
+        'MO':'Payor Identification:MO! Mainstream Обнаружен! Проверь United HealthCare of NY, Inc.',
+        'MP':'Payor Identification:MP! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'MR':'Payor Identification:MR! Mainstream Обнаружен! Проверь Excellus',
+        'MT':'Payor Identification:MT! HARP Обнаружен!',
+        'MV':'Payor Identification:MV! Mainstream Обнаружен! Проверь MVP, Inc.',
+        'NC':'Payor Identification:NC! HARP Обнаружен!',
+        'OD':'Payor Identification:OD! SNP Обнаружен!',
+        'OM':'Payor Identification:OM! SNP Обнаружен!',
+        'PO':'Payor Identification:PO! FIDA-IDD Обнаружен!',
+        'SF':'Payor Identification:SF! Mainstream Обнаружен! Проверь HealthFirst PHSP, Inc.',
+        'SP':'Payor Identification:SP! Mainstream Обнаружен! Проверь Fidelis Care New York',
+        'SW':'Payor Identification:SW! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'TN':'Payor Identification:TN! HARP Обнаружен!',
+        'TO':'Payor Identification:TO! Mainstream Обнаружен! Проверь Molina Healthcare of New York Inc. (TONY)',
+        'TS':'Payor Identification:TS! LTC Pace Обнаружен! Medicaid включает покрытие',
+        'UC':'Payor Identification:UC! HARP Обнаружен!',
+        'UM':'Payor Identification:UM! Medicaid Adv Plus Обнаружен!',
+        'VA':'Payor Identification:VA! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'VC':'Payor Identification:VC! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'VL':'Payor Identification:VL! Partial LTC Обнаружен! Medicaid включает покрытие',
+        'VM':'Payor Identification:VM! Medicaid Adv Plus Обнаружен!',
+        'VS':'Payor Identification:VS! SNP Обнаружен!',
+        'YF':'Payor Identification:YF! Medicaid Adv Plus Обнаружен!',
+        'YH':'Payor Identification:YH! Medicaid Adv Plus Обнаружен!',
+        'YL':'Payor Identification:YL! Medicaid Adv Plus Обнаружен!',
+        'YN':'Payor Identification:YN! Medicaid Adv Plus Обнаружен!',
+        'YO':'Payor Identification:YO! Medicaid Adv Plus Обнаружен!'
+      };
+      if (map[code]) payorMsg = map[code];
     }
 
-    if (hasPair) {
-      const boxPair = document.createElement('div');
-      boxPair.style.cssText = `flex:none;background:#ffa500;color:#000;border:2px solid #e68a00; padding:10px;border-radius:4px;font-size:14px;line-height:1.4;`;
-      boxPair.textContent = `[${tab}] Обнаружена дополнительная страховка!`;
-      nodes.push(boxPair);
+    let staleMsg = null;
+    const histDate = robustHistoryDate(winBody);
+    if (histDate && (Date.now() - histDate.getTime() > STALE_DAYS * 24 * 3600 * 1000)) {
+      staleMsg = 'Отображаемая информация устарела, обновите данные через кнопку Update';
     }
 
-    if (payorMsg) {
-      const boxPay = document.createElement('div');
-      boxPay.style.cssText = `flex:none;background:#fff8db;color:#000;border:2px solid #d4a000; padding:10px;border-radius:4px;font-size:14px;line-height:1.4;`;
-      boxPay.innerHTML = `<strong>[${tab}] 🆔 Payor ID:</strong><br>${payorMsg}`;
-      nodes.push(boxPay);
+    const cards = [];
+    const mk = (html, bg, br, col = '#000') => {
+      const dv = document.createElement('div');
+      dv.style.background = bg; dv.style.borderColor = br; dv.style.color = col;
+      dv.innerHTML = html; cards.push(dv);
+    };
+    mk(mismatches.length
+        ? `<strong>[${tab}] ⚠️ Расхождения:</strong><br>${mismatches.join('<br>')}`
+        : `<strong>[${tab}] ✅ Все поля совпадают.</strong>`,
+       mismatches.length ? '#fdd' : '#dfd',
+       mismatches.length ? '#900' : '#060',
+       mismatches.length ? '#900' : '#060');
+    if (plans.length) mk(`<strong>[${tab}] ℹ️ План:</strong><br>${plans.join('<br>')}`,'#eef','#036','#036');
+    if (hasPair)      mk(`<strong>[${tab}]</strong> Обнаружена дополнительная страховка!`,'#ffa500','#e68a00','#000');
+    if (payorMsg)     mk(`<strong>[${tab}] 🆔 Payor ID:</strong><br>${payorMsg}`,'#fff8db','#d4a000','#000');
+    if (staleMsg)     mk(`<strong>[${tab}] ⏱️ Внимание:</strong><br>${staleMsg}`,'#ffe7ba','#e6a23c','#5a3d00');
+
+    renderSection(winBody, tab, cards.map(c => (c.classList.add('piv-card'), c)));
+
+    if (!winBody.__pivScanned) winBody.__pivScanned = {};
+    winBody.__pivScanned[tab] = true;
+  }
+
+  // ---------- robust tab detection ----------
+  function scheduleScanAfterSwitch(winBody) {
+    const tab = getActiveTabLabel(winBody);
+    const lag = TAB_LAG[tab] || 300;
+    if (winBody.__pivScanTimer) clearTimeout(winBody.__pivScanTimer);
+    winBody.__pivScanTimer = setTimeout(() => {
+      const panel = getActivePanel(winBody);
+      waitStable(panel, () => {
+        adjustRepeated(winBody);
+        scanActiveTab(winBody, { force: false });
+        reorderAgg(ensureAgg(winBody));
+      });
+    }, lag);
+  }
+
+  function bindTabDetectors(winBody) {
+    if (winBody.dataset.pivTabsBound === '1') return;
+    winBody.dataset.pivTabsBound = '1';
+
+    const xwin = winBody.closest('.x-window');
+    const strip = xwin?.querySelector('.x-tab-strip');
+    const bodiesWrap = xwin?.querySelector('.x-tab-panel-bwrap') || winBody;
+
+    // 1) Слушатель клика/тача по полосе вкладок (если событие всплывает)
+    if (strip) {
+      const onPointer = () => {
+        const prevPanel = getActivePanel(winBody);
+        const prevSig = norm(prevPanel.textContent);
+        waitForReadyChange(winBody, prevPanel, prevSig, () => scheduleScanAfterSwitch(winBody));
+      };
+      strip.addEventListener('click', onPointer, true);
+      strip.addEventListener('pointerup', onPointer, true);
+      strip.addEventListener('mouseup', onPointer, true);
     }
 
-    if (staleMsg) {
-      const boxStale = document.createElement('div');
-      boxStale.style.cssText = `flex:none;background:#ffe7ba;color:#5a3d00;border:2px solid #e6a23c; padding:10px;border-radius:4px;font-size:14px;line-height:1.4;`;
-      boxStale.innerHTML = `<strong>[${tab}] ⏱️ Внимание:</strong><br>${staleMsg}`;
-      nodes.push(boxStale);
+    // 2) Наблюдение за сменой класса активного таба
+    if (strip) {
+      const moTabs = new MutationObserver(() => {
+        const keyNow = getActiveTabLabel(winBody);
+        if (winBody.__pivLastTabKey !== keyNow) {
+          winBody.__pivLastTabKey = keyNow;
+          scheduleScanAfterSwitch(winBody);
+        }
+      });
+      moTabs.observe(strip, { subtree: true, attributes: true, attributeFilter: ['class'] });
+      winBody.__pivMoTabs = moTabs;
     }
 
-    renderSection(winBody, tab, nodes);
-
-    const spacer1 = document.createElement('div');
-    spacer1.className = 'piv-bottom-spacer';
-    panel.appendChild(spacer1);
-
-    const sc = findScrollContainer(panel);
-    if (sc && sc !== panel) {
-      const spacer2 = document.createElement('div');
-      spacer2.className = 'piv-bottom-spacer';
-      sc.appendChild(spacer2);
+    // 3) Наблюдение за видимостью панелей (x-hide-display ↔ выключено)
+    if (bodiesWrap) {
+      const moBodies = new MutationObserver(recs => {
+        let need = false;
+        for (const r of recs) {
+          if (r.type === 'attributes' && r.target.classList && r.target.classList.contains('x-tab-panel-body')) {
+            if (r.attributeName === 'class') { need = true; break; }
+          }
+          if (r.type === 'childList') { need = true; break; }
+        }
+        if (need) scheduleScanAfterSwitch(winBody);
+      });
+      moBodies.observe(bodiesWrap, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
+      winBody.__pivMoBodies = moBodies;
     }
   }
+
+  // ---------- init ----------
+  function initWin(winBody) {
+    if (winBody.dataset.pivInited === '1') return;
+    winBody.dataset.pivInited = '1';
+    winBody.classList.add('piv-elig-win');
+
+    ensureAgg(winBody);
+    bindTabDetectors(winBody);
+
+    try { new ResizeObserver(() => adjustRepeated(winBody, 600)).observe(winBody); }
+    catch { window.addEventListener('resize', () => adjustRepeated(winBody, 600)); }
+
+    const p = getActivePanel(winBody);
+    setTimeout(() => waitStable(p, () => {
+      adjustRepeated(winBody);
+      scanActiveTab(winBody, { force: false });
+      reorderAgg(ensureAgg(winBody));
+    }), 250);
+  }
+
+  // уже открытые
+  setTimeout(() => {
+    document.querySelectorAll('div.x-window-body').forEach(winBody => {
+      const subHdr = winBody.querySelector('th[colspan="2"]');
+      if (!subHdr || !/^\s*Subscriber:/i.test(subHdr.textContent)) return;
+      initWin(winBody);
+    });
+  }, 0);
+
+  // новые окна
+  new MutationObserver(m => {
+    for (const r of m) for (const node of r.addedNodes) {
+      if (!(node instanceof HTMLElement)) continue;
+      const subHdr = node.querySelector?.('th[colspan="2"]');
+      if (!subHdr || !/^\s*Subscriber:/i.test(subHdr.textContent)) continue;
+      const winBody = node.closest?.('div.x-window-body') || node;
+      if (winBody) initWin(winBody);
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+
 })();
