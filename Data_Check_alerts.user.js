@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Info check + alerts
 // @namespace    http://tampermonkey.net/
-// @version      2.3
+// @version      2.4
 // @description  Transfer from billing fix + Name
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -203,34 +203,44 @@
     const sel = document.querySelector('div.x-grid3-row-selected .column-patient.app-overaction-body');
 let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
 
-    let nameSource = document.querySelector('.x-window-header-text');
+    // 1. Источник Имени (NameSource): Берем из заголовка окна
+    // *** ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ КОНТЕКСТА: Ищем заголовок ТОЛЬКО в контейнере нашего окна (winBody) ***
+    const winContainer = winBody.closest('.x-window');
+    let nameSource = winContainer ? winContainer.querySelector('.x-window-header-text') : null;
 
+    // --- ПАРСИНГ ИМЕНИ ПАЦИЕНТА (ТОЧНОЕ РАЗДЕЛЕНИЕ ПО ЗАПЯТОЙ) ---
     if (nameSource) {
       let titleText = nameSource.textContent.trim();
 
+      // Парсинг имени и фамилии
       if (titleText.includes(',')) {
-        
+        // КОРРЕКТНЫЙ ПАРСИНГ для "Фамилия, Имя" - БЕЗ СВАПА.
         const parts = titleText.split(',', 2);
 
+        // Очищаем Фамилию (первую часть)
         gridLast = parts[0]
             .replace(/Processing.*?:|Process.*?:/g, '')
             .replace(/Electronic eligibility for /g, '')
             .replace(/[()#\d{1,}]/g, ' ')
             .replace(/\s{2,}/g, ' ')
-            .trim(); 
+            .trim();   // Вся часть до запятой
 
+        // Очищаем Имя (вторую часть)
         gridFirst = (parts[1] || '')
             .replace(/[()#\d{1,}]/g, ' ')
             .replace(/\s{2,}/g, ' ')
-            .trim();
+            .trim(); // Вся часть после -> Имя
 
+        // Проверка на служебный текст
         if (gridLast.toLowerCase() === 'error' || gridLast.toLowerCase() === 'confirmation' || gridLast.toLowerCase() === '') {
           gridLast = '';
           gridFirst = '';
         }
 
       } else {
+        // Логика для имен БЕЗ ЗАПЯТОЙ (оставлена для компенсации свапа)
 
+        // Сначала очищаем всю строку
         titleText = titleText
             .replace(/Processing.*?:|Process.*?:/g, '')
             .replace(/Electronic eligibility for /g, '')
@@ -245,8 +255,8 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
         if (titleText.length > 0) {
             const p = titleText.split(/\s+/).filter(s => s.length > 0);
             if (p.length >= 2) {
-                gridLast = p.shift() || ''; 
-                gridFirst = p.join(' ');
+                gridLast = p.shift() || ''; // Первое слово -> Фамилия (компенсация свапа)
+                gridFirst = p.join(' '); // Остальное -> Имя
             } else {
                 gridFirst = p[0] || '';
                 gridLast = '';
@@ -255,23 +265,28 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
       }
     }
 
+    // --- ЗАПАСНОЙ ВАРИАНТ: ПОЛУЧЕНИЕ ИМЕНИ И DOB ИЗ DOCUMENT.TITLE ---
     if (gridFirst.length === 0) {
         const mainTitle = document.title;
         let dtText = mainTitle.split('::')[1] || '';
         dtText = dtText.replace(/Complete Express Medical PC/i, '').trim();
 
+        // Извлечение DOB из Document Title
         const dobMatchTitle = dtText.match(/(\d{2}\/\d{2}\/\d{4})/);
         if (dobMatchTitle) {
             procDOB = dobMatchTitle[0];
             dtText = dtText.replace(dobMatchTitle[0], '').trim();
         }
 
+        // Парсинг имени из Document Title
         if (dtText.includes(',')) {
+            // КОРРЕКТНЫЙ ПАРСИНГ для "Фамилия, Имя" - БЕЗ СВАПА.
             const parts = dtText.split(',', 2);
             gridLast = parts[0].trim();
             gridFirst = (parts[1] || '').trim();
         } else {
             const p = dtText.split(/\s+/).filter(s => s.length > 0);
+            // Принудительный "обратный свап" для Document Title:
             if (p.length >= 2) {
                 gridLast = p.shift() || '';
                 gridFirst = p.join(' ');
@@ -282,6 +297,8 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
         }
     }
 
+    // --- ПОИСК GENDER И РЕЗЕРВНОГО DOB В СЕТКЕ (ПО КОМПОНЕНТАМ ИМЕНИ) ---
+    // Нормализуем полные имя и фамилию для проверки наличия в строке сетки
     const targetFirst = norm(gridFirst);
     const targetLast = norm(gridLast);
 
@@ -292,10 +309,13 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
             const rowNameEl = block.querySelector('span[qtitle]');
             if (!rowNameEl) continue;
 
+            // 1. Получаем нормализованное полное имя из строки сетки
             const rowFullName = norm(rowNameEl.textContent.trim().replace(/,/g, ' '));
 
+            // 2. Сравниваем компоненты имени (Проверяем, что Фамилия И Имя присутствуют в строке сетки)
             if (rowFullName.includes(targetLast) && rowFullName.includes(targetFirst)) {
 
+                // Найдено совпадение! Извлекаем DOB/Gender
                 const tip = block.querySelector('table.app-tip-table');
 
                 if (tip) {
@@ -303,6 +323,7 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
                         const label = tr.querySelector('th, td:nth-child(1)')?.textContent.trim().toLowerCase();
                         const value = tr.querySelector('td:nth-child(2)')?.textContent.trim();
 
+                        // Заполняем DOB только если он не был найден
                         if (label === 'dob:' && !procDOB) {
                           procDOB = value || '';
                         }
@@ -312,6 +333,7 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
                     });
                 }
 
+                // Резервный поиск Gender
                 if (!procGender) {
                   procGender = block.querySelector('img[qtip]')?.getAttribute('qtip')?.trim() || '';
                 }
