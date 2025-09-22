@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Info check + alerts
 // @namespace    http://tampermonkey.net/
-// @version      2.2
-// @description  Transfer from billing fix
+// @version      2.3
+// @description  Transfer from billing fix + Name
 // @match        https://emdspc.emsow.com/*
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.user.js
@@ -203,34 +203,54 @@
     const sel = document.querySelector('div.x-grid3-row-selected .column-patient.app-overaction-body');
 let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
 
-    const winContainer = winBody.closest('.x-window');
-    let nameSource = winContainer ? winContainer.querySelector('.x-window-header-text') : null;
+    let nameSource = document.querySelector('.x-window-header-text');
 
     if (nameSource) {
       let titleText = nameSource.textContent.trim();
 
-      // Агрессивная очистка
-      titleText = titleText
-        .replace(/Processing.*?:|Process.*?:/g, '')
-        .replace(/Electronic eligibility for /g, '')
-        .replace(/[()#\d{1,}]/g, ' ')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
-
-      if (titleText.toLowerCase() === 'error' || titleText.toLowerCase() === 'confirmation' || titleText.toLowerCase() === '') {
-          titleText = '';
-      }
-
       if (titleText.includes(',')) {
-        [gridLast, gridFirst] = titleText.split(',').map(s => s.trim());
-      } else if (titleText.length > 0) {
-        const p = titleText.split(/\s+/).filter(s => s.length > 0);
-        if (p.length >= 2) {
-            gridLast = p.shift() || '';
-            gridFirst = p.join(' ');
-        } else {
-            gridFirst = p[0] || '';
-            gridLast = '';
+        
+        const parts = titleText.split(',', 2);
+
+        gridLast = parts[0]
+            .replace(/Processing.*?:|Process.*?:/g, '')
+            .replace(/Electronic eligibility for /g, '')
+            .replace(/[()#\d{1,}]/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim(); 
+
+        gridFirst = (parts[1] || '')
+            .replace(/[()#\d{1,}]/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+
+        if (gridLast.toLowerCase() === 'error' || gridLast.toLowerCase() === 'confirmation' || gridLast.toLowerCase() === '') {
+          gridLast = '';
+          gridFirst = '';
+        }
+
+      } else {
+
+        titleText = titleText
+            .replace(/Processing.*?:|Process.*?:/g, '')
+            .replace(/Electronic eligibility for /g, '')
+            .replace(/[()#\d{1,}]/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+
+        if (titleText.toLowerCase() === 'error' || titleText.toLowerCase() === 'confirmation' || titleText.toLowerCase() === '') {
+            titleText = '';
+        }
+
+        if (titleText.length > 0) {
+            const p = titleText.split(/\s+/).filter(s => s.length > 0);
+            if (p.length >= 2) {
+                gridLast = p.shift() || ''; 
+                gridFirst = p.join(' ');
+            } else {
+                gridFirst = p[0] || '';
+                gridLast = '';
+            }
         }
       }
     }
@@ -247,7 +267,9 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
         }
 
         if (dtText.includes(',')) {
-            [gridLast, gridFirst] = dtText.split(',').map(s => s.trim());
+            const parts = dtText.split(',', 2);
+            gridLast = parts[0].trim();
+            gridFirst = (parts[1] || '').trim();
         } else {
             const p = dtText.split(/\s+/).filter(s => s.length > 0);
             if (p.length >= 2) {
@@ -260,8 +282,8 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
         }
     }
 
-    const targetFirst = norm(gridFirst.split(/\s+/)[0]);
-    const targetLast = norm(gridLast.split(/\s+/)[0]);
+    const targetFirst = norm(gridFirst);
+    const targetLast = norm(gridLast);
 
     if (targetFirst.length > 0 && targetLast.length > 0) {
         const allPatientBlocks = document.querySelectorAll('div.x-grid3-row .column-patient.app-overaction-body');
@@ -270,11 +292,10 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
             const rowNameEl = block.querySelector('span[qtitle]');
             if (!rowNameEl) continue;
 
-            const parts = rowNameEl.textContent.trim().replace(/,/g, ' ').split(/\s+/).filter(s => s.length > 0);
-            const rowLast = norm(parts[0] || '');
-            const rowFirst = norm(parts[1] || '');
+            const rowFullName = norm(rowNameEl.textContent.trim().replace(/,/g, ' '));
 
-            if (rowLast === targetLast && rowFirst === targetFirst) {
+            if (rowFullName.includes(targetLast) && rowFullName.includes(targetFirst)) {
+
                 const tip = block.querySelector('table.app-tip-table');
 
                 if (tip) {
@@ -299,7 +320,6 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
             }
         }
     }
-
     const subHeader = panel.querySelector('th[colspan="2"]')?.textContent.replace('Subscriber:', '').trim() || '';
     const [insLast = '', insFirst = ''] = subHeader.split(',').map(s => s.trim());
     let insDOB = '', insGender = '';
@@ -351,7 +371,6 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
     add(/\bsilver\b/i,   'Silver план обнаружен! Проверь Deductible!');
     add(/\bleaf\b/i,     'Leaf план обнаружен! Проверь Deductible!');
 
-    // доп. страховка (строго рядом: "30:" → "Eligibility: ...")
     const covStr  = '30: health benefit plan coverage';
     const eligTriggers = [
       'eligibility: contact following entity for eligibility or benefit information',
@@ -510,7 +529,6 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
     const strip = xwin?.querySelector('.x-tab-strip');
     const bodiesWrap = xwin?.querySelector('.x-tab-panel-bwrap') || winBody;
 
-    // 1) Слушатель клика/тача по полосе вкладок (если событие всплывает)
     if (strip) {
       const onPointer = () => {
         const prevPanel = getActivePanel(winBody);
@@ -522,7 +540,6 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
       strip.addEventListener('mouseup', onPointer, true);
     }
 
-    // 2) Наблюдение за сменой класса активного таба
     if (strip) {
       const moTabs = new MutationObserver(() => {
         const keyNow = getActiveTabLabel(winBody);
@@ -535,7 +552,6 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
       winBody.__pivMoTabs = moTabs;
     }
 
-    // 3) Наблюдение за видимостью панелей (x-hide-display ↔ выключено)
     if (bodiesWrap) {
       const moBodies = new MutationObserver(recs => {
         let need = false;
@@ -572,7 +588,6 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
     }), 250);
   }
 
-  // уже открытые
   setTimeout(() => {
     document.querySelectorAll('div.x-window-body').forEach(winBody => {
       const subHdr = winBody.querySelector('th[colspan="2"]');
@@ -581,7 +596,6 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
     });
   }, 0);
 
-  // новые окна
   new MutationObserver(m => {
     for (const r of m) for (const node of r.addedNodes) {
       if (!(node instanceof HTMLElement)) continue;
