@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Info check + alerts
 // @namespace    http://tampermonkey.net/
-// @version      2.1
-// @description  Fix offset
+// @version      2.2
+// @description  Transfer from billing fix
 // @match        https://emdspc.emsow.com/*
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.user.js
@@ -201,16 +201,103 @@
     if (!force && winBody.__pivScanned?.[tab]) return;
 
     const sel = document.querySelector('div.x-grid3-row-selected .column-patient.app-overaction-body');
-    let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
-    if (sel) {
-      const title = sel.querySelector('span[qtitle]')?.textContent.trim() || '';
-      if (title.includes(',')) [gridLast, gridFirst] = title.split(',').map(s => s.trim());
-      else { const p = title.split(/\s+/); gridFirst = p.shift() || ''; gridLast = p.join(' '); }
-      sel.querySelectorAll('table.app-tip-table tr').forEach(r => {
-        const th = r.querySelector('th')?.textContent.trim().toLowerCase();
-        if (th === 'dob:') procDOB = r.querySelector('td')?.textContent.trim() || '';
-      });
-      procGender = sel.querySelector('img[qtip]')?.getAttribute('qtip')?.trim() || '';
+let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
+
+    const winContainer = winBody.closest('.x-window');
+    let nameSource = winContainer ? winContainer.querySelector('.x-window-header-text') : null;
+
+    if (nameSource) {
+      let titleText = nameSource.textContent.trim();
+
+      // Агрессивная очистка
+      titleText = titleText
+        .replace(/Processing.*?:|Process.*?:/g, '')
+        .replace(/Electronic eligibility for /g, '')
+        .replace(/[()#\d{1,}]/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+      if (titleText.toLowerCase() === 'error' || titleText.toLowerCase() === 'confirmation' || titleText.toLowerCase() === '') {
+          titleText = '';
+      }
+
+      if (titleText.includes(',')) {
+        [gridLast, gridFirst] = titleText.split(',').map(s => s.trim());
+      } else if (titleText.length > 0) {
+        const p = titleText.split(/\s+/).filter(s => s.length > 0);
+        if (p.length >= 2) {
+            gridLast = p.shift() || '';
+            gridFirst = p.join(' ');
+        } else {
+            gridFirst = p[0] || '';
+            gridLast = '';
+        }
+      }
+    }
+
+    if (gridFirst.length === 0) {
+        const mainTitle = document.title;
+        let dtText = mainTitle.split('::')[1] || '';
+        dtText = dtText.replace(/Complete Express Medical PC/i, '').trim();
+
+        const dobMatchTitle = dtText.match(/(\d{2}\/\d{2}\/\d{4})/);
+        if (dobMatchTitle) {
+            procDOB = dobMatchTitle[0];
+            dtText = dtText.replace(dobMatchTitle[0], '').trim();
+        }
+
+        if (dtText.includes(',')) {
+            [gridLast, gridFirst] = dtText.split(',').map(s => s.trim());
+        } else {
+            const p = dtText.split(/\s+/).filter(s => s.length > 0);
+            if (p.length >= 2) {
+                gridLast = p.shift() || '';
+                gridFirst = p.join(' ');
+            } else {
+                gridFirst = p[0] || '';
+                gridLast = '';
+            }
+        }
+    }
+
+    const targetFirst = norm(gridFirst.split(/\s+/)[0]);
+    const targetLast = norm(gridLast.split(/\s+/)[0]);
+
+    if (targetFirst.length > 0 && targetLast.length > 0) {
+        const allPatientBlocks = document.querySelectorAll('div.x-grid3-row .column-patient.app-overaction-body');
+
+        for (const block of allPatientBlocks) {
+            const rowNameEl = block.querySelector('span[qtitle]');
+            if (!rowNameEl) continue;
+
+            const parts = rowNameEl.textContent.trim().replace(/,/g, ' ').split(/\s+/).filter(s => s.length > 0);
+            const rowLast = norm(parts[0] || '');
+            const rowFirst = norm(parts[1] || '');
+
+            if (rowLast === targetLast && rowFirst === targetFirst) {
+                const tip = block.querySelector('table.app-tip-table');
+
+                if (tip) {
+                    tip.querySelectorAll('tr').forEach(tr => {
+                        const label = tr.querySelector('th, td:nth-child(1)')?.textContent.trim().toLowerCase();
+                        const value = tr.querySelector('td:nth-child(2)')?.textContent.trim();
+
+                        if (label === 'dob:' && !procDOB) {
+                          procDOB = value || '';
+                        }
+                        if (label === 'gender:') {
+                          procGender = value || '';
+                        }
+                    });
+                }
+
+                if (!procGender) {
+                  procGender = block.querySelector('img[qtip]')?.getAttribute('qtip')?.trim() || '';
+                }
+
+                break;
+            }
+        }
     }
 
     const subHeader = panel.querySelector('th[colspan="2"]')?.textContent.replace('Subscriber:', '').trim() || '';
