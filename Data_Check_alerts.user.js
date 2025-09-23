@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Info check + alerts
 // @namespace    http://tampermonkey.net/
-// @version      2.4
+// @version      2.41
 // @description  Transfer from billing fix + Name
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -272,11 +272,12 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
         dtText = dtText.replace(/Complete Express Medical PC/i, '').trim();
 
         // Извлечение DOB из Document Title
-        const dobMatchTitle = dtText.match(/(\d{2}\/\d{2}\/\d{4})/);
-        if (dobMatchTitle) {
-            procDOB = dobMatchTitle[0];
-            dtText = dtText.replace(dobMatchTitle[0], '').trim();
-        }
+// Извлечение DOB из Document Title (самый надежный DOB)
+const dobMatchTitle = dtText.match(/(\d{2}\/\d{2}\/\d{4})/);
+if (dobMatchTitle) {
+    procDOB = dobMatchTitle[0].replace(/[^0-9/]/g, ''); // <--- ДОБАВЛЕНО
+    dtText = dtText.replace(dobMatchTitle[0], '').trim();
+}
 
         // Парсинг имени из Document Title
         if (dtText.includes(',')) {
@@ -324,9 +325,10 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
                         const value = tr.querySelector('td:nth-child(2)')?.textContent.trim();
 
                         // Заполняем DOB только если он не был найден
-                        if (label === 'dob:' && !procDOB) {
-                          procDOB = value || '';
-                        }
+// Заполняем DOB только если он не был найден
+if (label === 'dob:' && !procDOB) {
+    procDOB = (value || '').replace(/[^0-9/]/g, ''); // <--- ДОБАВЛЕНО
+}
                         if (label === 'gender:') {
                           procGender = value || '';
                         }
