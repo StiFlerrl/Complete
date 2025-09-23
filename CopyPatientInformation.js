@@ -2,7 +2,7 @@
 // @name         Copy Patient Information
 // @namespace    http://tampermonkey.net/
 // @version      1.0
-// @description  
+// @description  Adds buttons to copy patient information for each patient in a grid view with a configurable emoji.
 // @author       Gemini
 // @match        https://emdspc.emsow.com/*
 // @grant        GM_setClipboard
@@ -104,12 +104,13 @@
         modal.innerHTML = `
             <div style="font-weight: bold; margin-bottom: 10px;">Настройки</div>
             <div style="font-size: 12px; margin-bottom: 10px;">Выберите эмодзи для второй строки:</div>
-            <div id="emoji-list" style="display: flex; gap: 10px;">
+            <div id="emoji-list" style="display: flex; flex-wrap: wrap; gap: 10px;">
                 <button data-emoji="✅" class="emoji-btn">✅</button>
                 <button data-emoji="👍" class="emoji-btn">👍</button>
                 <button data-emoji="⭐" class="emoji-btn">⭐</button>
                 <button data-emoji="🔥" class="emoji-btn">🔥</button>
                 <button data-emoji="❤️" class="emoji-btn">❤️</button>
+                <button data-emoji="" class="emoji-btn no-emoji-btn">Нет эмодзи</button>
             </div>
         `;
 
@@ -123,7 +124,12 @@
                 padding: 5px;
                 cursor: pointer;
                 font-size: 16px;
+                flex-grow: 1;
+                min-width: 30px;
             `;
+            if (button.classList.contains('no-emoji-btn')) {
+                button.style.fontSize = '12px';
+            }
             button.onclick = () => {
                 const emoji = button.getAttribute('data-emoji');
                 localStorage.setItem('selectedEmoji', emoji);
