@@ -6,8 +6,8 @@
 // @author       Gemini
 // @match        https://emdspc.emsow.com/*
 // @grant        GM_setClipboard
-// @updateURL    
-// @downloadURL  
+// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/CopyPatientInformation.js
+// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/CopyPatientInformation.js
 // ==/UserScript==
 
 (function() {
