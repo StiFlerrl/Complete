@@ -3,11 +3,10 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.1
 // @description  Adds buttons to copy patient information for each patient in a grid view.
-// @author       Gemini
 // @match        https://emdspc.emsow.com/*
-// @grant        GM_setClipboard
-// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/refs/heads/main/CopyPatientInformation.js
-// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/refs/heads/main/CopyPatientInformation.js
+// @grant        none
+// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/refs/heads/main/Copy_Patient_Information.js
+// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/refs/heads/main/Copy_Patient_Information.js
 // ==/UserScript==
 
 (function() {
