@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Copy Patient Information
 // @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Adds buttons to copy patient information for each patient in a grid view with a configurable emoji.
+// @version      1.1
+// @description  Adds buttons to copy patient information for each patient in a grid view.
 // @author       Gemini
 // @match        https://emdspc.emsow.com/*
 // @grant        GM_setClipboard
@@ -40,7 +40,6 @@
         const patientNameElement = rowElement.querySelector('.x-grid3-td-3 .text-bold span');
         const insuranceNameElement = rowElement.querySelector('.x-grid3-td-4 .text-bold span');
         const studyElements = rowElement.querySelectorAll('.x-grid3-td-7 b');
-        const selectedEmoji = localStorage.getItem('selectedEmoji') || '';
 
         const patientName = patientNameElement ? patientNameElement.textContent.trim() : '';
         const insuranceName = insuranceNameElement ? insuranceNameElement.textContent.trim().replace(/^Primary:\s*/, '') : '';
@@ -65,150 +64,49 @@
             }
         });
 
-        result += ' - ';
-
-        if (selectedEmoji) {
-            result += `\n${selectedEmoji}`;
-        }
-
         return result;
-    }
-
-    /**
-     * Creates and adds the settings modal to the document.
-     */
-    function createSettingsModal() {
-        const modalId = 'copy-info-settings-modal';
-        let modal = document.getElementById(modalId);
-        if (modal) {
-            return modal;
-        }
-
-        modal = document.createElement('div');
-        modal.id = modalId;
-        modal.style.cssText = `
-            display: none;
-            position: absolute;
-            bottom: 30px;
-            right: 0px;
-            width: 200px;
-            background-color: #fff;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            z-index: 1000;
-            font-family: sans-serif;
-        `;
-
-        modal.innerHTML = `
-            <div style="font-weight: bold; margin-bottom: 10px;">Настройки</div>
-            <div style="font-size: 12px; margin-bottom: 10px;">Выберите эмодзи для второй строки:</div>
-            <div id="emoji-list" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                <button data-emoji="✅" class="emoji-btn">✅</button>
-                <button data-emoji="👍" class="emoji-btn">👍</button>
-                <button data-emoji="⭐" class="emoji-btn">⭐</button>
-                <button data-emoji="🔥" class="emoji-btn">🔥</button>
-                <button data-emoji="❤️" class="emoji-btn">❤️</button>
-                <button data-emoji="" class="emoji-btn no-emoji-btn">Нет эмодзи</button>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        modal.querySelectorAll('.emoji-btn').forEach(button => {
-            button.style.cssText = `
-                background: #f0f0f0;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                padding: 5px;
-                cursor: pointer;
-                font-size: 16px;
-                flex-grow: 1;
-                min-width: 30px;
-            `;
-            if (button.classList.contains('no-emoji-btn')) {
-                button.style.fontSize = '12px';
-            }
-            button.onclick = () => {
-                const emoji = button.getAttribute('data-emoji');
-                localStorage.setItem('selectedEmoji', emoji);
-                modal.style.display = 'none';
-            };
-        });
-
-        return modal;
     }
 
     /**
      * Creates and adds buttons to each table row for copying information.
      */
     function addButtonsToRows() {
-        // Find the specific container and add buttons only to rows within it
-        const container = document.getElementById('ext-gen268-gp-service_status_system-performed-bd');
+        const container = document.querySelector('.x-grid-group-body');
         if (!container) {
             return;
-        }
-
-        // Add a settings button to the container
-        let settingsButton = container.querySelector('.settings-button');
-        if (!settingsButton) {
-            container.style.position = 'relative';
-
-            settingsButton = document.createElement('button');
-            settingsButton.className = 'settings-button';
-            settingsButton.textContent = '⚙️';
-            settingsButton.style.cssText = `
-                position: absolute;
-                bottom: 5px;
-                right: 5px;
-                background: none;
-                border: none;
-                cursor: pointer;
-                font-size: 16px;
-                z-index: 1001;
-            `;
-            const settingsModal = createSettingsModal();
-            settingsButton.onclick = (e) => {
-                e.stopPropagation();
-                settingsModal.style.display = settingsModal.style.display === 'none' ? 'block' : 'none';
-            };
-            container.appendChild(settingsButton);
         }
 
         const rows = container.querySelectorAll('.x-grid3-row');
 
         rows.forEach(row => {
-            const targetCell = row.querySelector('.x-grid3-td-1');
-            const patientNameElement = row.querySelector('.x-grid3-td-3 .text-bold span');
-            const dobElement = row.querySelector('.x-grid3-td-3 .app-tip-table-th + td');
-            let memberIdElement = null;
+            const copyAllCell = row.querySelector('.x-grid3-td-1');
+            const patientNameCell = row.querySelector('.x-grid3-td-3');
+            const memberIdCell = row.querySelector('.x-grid3-td-4');
+            const dobCell = row.querySelector('.x-grid3-td-3');
 
-            // More robust way to find the Member ID element
-            const insuranceCell = row.querySelector('.x-grid3-td-4');
-            if (insuranceCell) {
-                const memberIdTh = Array.from(insuranceCell.querySelectorAll('.app-tip-table-th')).find(th => th.textContent.includes('Member ID:'));
-                if (memberIdTh) {
-                    const memberIdTd = memberIdTh.nextElementSibling;
-                    if (memberIdTd) {
-                        memberIdElement = memberIdTd.querySelector('span');
-                    }
-                }
+            // Check if buttons have already been added to this row
+            if (row.querySelector('.copy-buttons-wrapper')) {
+                return;
             }
 
-            if (targetCell) {
-                // Check if the button has already been added to this cell
-                const existingButton = targetCell.querySelector('.copy-answer-button');
-                if (existingButton) {
-                    return;
-                }
+            // Create a wrapper for all buttons in the first column
+            if (copyAllCell) {
+                const buttonsWrapper = document.createElement('div');
+                buttonsWrapper.className = 'copy-buttons-wrapper';
+                buttonsWrapper.style.cssText = `
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 5px;
+                    margin-top: 5px;
+                `;
+                copyAllCell.appendChild(buttonsWrapper);
 
-                // Create and add "Copy answer" button
+                // Create and add "Copy answer" button with old style
                 const copyAnswerButton = document.createElement('button');
                 copyAnswerButton.className = 'copy-answer-button';
                 copyAnswerButton.textContent = 'Copy answer';
                 copyAnswerButton.style.cssText = `
-                    margin-left: 10px;
                     padding: 5px 10px;
                     border: 1px solid #ccc;
                     border-radius: 5px;
@@ -219,26 +117,23 @@
                 copyAnswerButton.onclick = () => {
                     const info = extractAnswerInfo(row);
                     if (info) {
-                        copyToClipboard(info);
+                        copyToClipboard(info + ' - ');
                     }
                 };
-
-                targetCell.appendChild(copyAnswerButton);
+                buttonsWrapper.appendChild(copyAnswerButton);
             }
 
-            // Add individual copy buttons for Name, DOB and Member ID
-            const createCopyIconButton = (content) => {
+            // Create a helper function to create small copy buttons
+            const createCopyIconButton = (label, content) => {
                 const button = document.createElement('button');
                 button.textContent = '📄';
-                button.title = 'Copy';
+                button.title = `Copy ${label}`;
                 button.style.cssText = `
                     background: none;
                     border: none;
-                    font-size: 10px;
+                    font-size: 1em;
                     cursor: pointer;
                     margin-left: 5px;
-                    padding: 0;
-                    color: #555;
                 `;
                 button.onclick = (e) => {
                     e.stopPropagation();
@@ -247,28 +142,45 @@
                 return button;
             };
 
-            if (patientNameElement && !patientNameElement.parentNode.querySelector('.copy-icon-button')) {
-                const nameCopyButton = createCopyIconButton(patientNameElement.textContent.trim());
-                nameCopyButton.className = 'copy-icon-button';
-                patientNameElement.parentNode.appendChild(nameCopyButton);
+            // Add buttons to individual cells
+            if (patientNameCell) {
+                const patientNameElement = patientNameCell.querySelector('.text-bold span');
+                if (patientNameElement) {
+                    const nameCopyButton = createCopyIconButton('Name', patientNameElement.textContent.trim());
+                    patientNameElement.parentNode.style.display = 'flex';
+                    patientNameElement.parentNode.appendChild(nameCopyButton);
+                }
+                const dobElement = dobCell.querySelector('.app-tip-table-th + td');
+                if (dobElement) {
+                    const dobCopyButton = createCopyIconButton('DOB', dobElement.textContent.trim());
+                    dobElement.parentNode.style.display = 'flex';
+                    dobElement.appendChild(dobCopyButton);
+                }
             }
 
-            if (dobElement && !dobElement.querySelector('.copy-icon-button')) {
-                const dobCopyButton = createCopyIconButton(dobElement.textContent.trim());
-                dobCopyButton.className = 'copy-icon-button';
-                dobElement.appendChild(dobCopyButton);
-            }
-
-            if (memberIdElement && !memberIdElement.querySelector('.copy-icon-button')) {
-                const memberIdCopyButton = createCopyIconButton(memberIdElement.textContent.trim());
-                memberIdCopyButton.className = 'copy-icon-button';
-                memberIdElement.parentNode.appendChild(memberIdCopyButton);
+            if (memberIdCell) {
+                const memberIdTh = Array.from(memberIdCell.querySelectorAll('.app-tip-table-th')).find(th => th.textContent.includes('Member ID:'));
+                if (memberIdTh) {
+                    const memberIdTd = memberIdTh.nextElementSibling;
+                    const memberIdElement = memberIdTd ? memberIdTd.querySelector('span') : null;
+                    if (memberIdElement) {
+                        const memberIdCopyButton = createCopyIconButton('Member ID', memberIdElement.textContent.trim());
+                        memberIdTd.style.display = 'flex';
+                        memberIdTd.appendChild(memberIdCopyButton);
+                    }
+                }
             }
         });
     }
 
-    const observer = new MutationObserver(() => {
-        addButtonsToRows();
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                if (document.querySelector('.x-grid3-row')) {
+                    addButtonsToRows();
+                }
+            }
+        });
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
