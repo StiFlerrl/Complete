@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         Copy Patient Information
 // @namespace    http://tampermonkey.net/
-// @version      1.11
+// @version      1.12
 // @description  Adds buttons to copy patient information for each patient in a grid view.
 // @match        https://emdspc.emsow.com/*
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Copy_Patient_Information.user.js
 // @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/Copy_Patient_Information.user.js
 // ==/UserScript==
+
 
 (function() {
     'use strict';
@@ -23,11 +24,33 @@
     }
 
     /**
-     * Copies the given text to the clipboard.
+     * Copies the given text to the clipboard using a more reliable method.
      * @param {string} text The text to copy.
      */
     function copyToClipboard(text) {
-        GM_setClipboard(text);
+        // Create a temporary textarea element to copy the text.
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.top = 0;
+        textarea.style.left = 0;
+        textarea.style.width = '2em';
+        textarea.style.height = '2em';
+        textarea.style.padding = 0;
+        textarea.style.border = 'none';
+        textarea.style.outline = 'none';
+        textarea.style.boxShadow = 'none';
+        textarea.style.background = 'transparent';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+            // Fallback to GM_setClipboard if execCommand fails
+            // GM_setClipboard(text);
+        }
+        document.body.removeChild(textarea);
     }
 
     /**
@@ -39,10 +62,10 @@
         const patientNameElement = rowElement.querySelector('.x-grid3-td-3 .text-bold span');
         const insuranceNameElement = rowElement.querySelector('.x-grid3-td-4 .text-bold span');
         const studyElements = rowElement.querySelectorAll('.x-grid3-td-7 b');
-
+        
         const patientName = patientNameElement ? patientNameElement.textContent.trim() : '';
         const insuranceName = insuranceNameElement ? insuranceNameElement.textContent.trim().replace(/^Primary:\s*/, '') : '';
-
+        
         const studies = [];
         studyElements.forEach(el => {
             const studyText = el.textContent.trim();
@@ -50,7 +73,7 @@
                 studies.push(cleanStudyText(studyText));
             }
         });
-
+        
         const uniqueStudies = [...new Set(studies)];
 
         let result = patientName;
@@ -62,7 +85,7 @@
                 result += ` - ${study}`;
             }
         });
-
+        
         return result;
     }
 
@@ -82,7 +105,7 @@
             const patientNameCell = row.querySelector('.x-grid3-td-3');
             const memberIdCell = row.querySelector('.x-grid3-td-4');
             const dobCell = row.querySelector('.x-grid3-td-3');
-
+            
             // Check if buttons have already been added to this row
             if (row.querySelector('.copy-buttons-wrapper')) {
                 return;
