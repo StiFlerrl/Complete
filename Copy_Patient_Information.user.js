@@ -5,8 +5,8 @@
 // @description  Adds buttons to copy patient information for each patient in a grid view.
 // @match        https://emdspc.emsow.com/*
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Copy_Patient_Information.js
-// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/Copy_Patient_Information.js
+// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Copy_Patient_Information.user.js
+// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/Copy_Patient_Information.user.js
 // ==/UserScript==
 
 (function() {
