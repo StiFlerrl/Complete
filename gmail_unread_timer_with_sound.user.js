@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Unread Timer + Sound Toggle & Snippets
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
@@ -26,7 +26,13 @@
     highCopay: `The patient's plan has a copay of ... dollars.`,
     highDed: `The patient's deductible is ... dollars. We can only accept the patient as self-pay.`,
     memberIdCard: `To verify the patient's insurance, we need a scan of their ID card. Please provide it.`,
-    medicareIdCard: `Please provide the Medicare ID card.`
+    medicareIdCard: `Please provide the Medicare ID card.`,
+    repeatsixmonth: `No, we cannot accept the patient because this study was already done on _______ (the study can only be performed once every 6 months).`,
+    repeatyear: `No, we cannot accept the patient because this study was already done on 09/15/2025. For Medicaid, we can repeat the studies only with a one-year interval.`,
+    cashorcard: `Please clarify how the payment was made (cash/card) and who collected the money.`,
+    coverageexpired: `No, we cannot accept this patient because the insurance coverage expired on _______. Please send the active insurance information.`,
+    nexttimedueauth: `Not today. Please fax the medical notes, we will try to get the authorization and inform you about the result.`,
+    outofnetwork: `We cannot accept this insurance because our providers are out of network. The patient can only be accepted as self-pay.`
   };
 
   const CATEGORIES = [
@@ -185,7 +191,13 @@ function insertCompleteListFromClipboard() {
               ['High Copay', 'highCopay'],
               ['High Ded', 'highDed'],
               ['Member id card', 'memberIdCard'],
-              ['Medicare id card', 'medicareIdCard']
+              ['Medicare id card', 'medicareIdCard'],
+              ['Repeat 6 month','repeatsixmonth'],
+              ['Repeat 1 year','repeatyear'],
+              ['Cash or Card','cashorcard'],
+              ['Coverage expired','coverageexpired'],
+              ['Next time due auth','nexttimedueauth'],
+              ['Out Of Network','outofnetwork']
             ];
             subButtons.forEach(([subLabel, subKey]) => {
               const subBtn = document.createElement('button');
