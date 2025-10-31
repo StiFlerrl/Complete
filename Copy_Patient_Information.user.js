@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.02
+// @version      2.03
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -43,7 +43,14 @@
             'ABDO3cpt',
             'Retroperetonial3'
         ],
-
+        eligibilityMaxDays: 30,
+        repeatStudyRules: {
+            'DEFAULT_DAYS': 180,
+        },
+        repeatInsuranceRules: {
+            'DEFAULT_DAYS': 180,
+            '$medicaid$': 365,
+        },
         insuranceOverrides: {
             '$medicare$': {
                 'ABD2': 'ABDO3',
@@ -110,7 +117,8 @@
             '$fidelis care new york$': "Выбран не верный план Fidelis! Измени на NYNM Fidelis",
             '$mvp$': "NO MVP essential plan 1 - we are out of network",
             '$riverspring health plan$': "mittal only cardio, abd pel thy Hikin with auth through fax, можно брать",
-            '$villagecare max$': "Cardio OK, ABD PEL THY only after approve thru FAX"
+            '$villagecare max$': "Cardio OK, ABD PEL THY only after approve thru FAX",
+            '$medicaid$': "Repeat period 1 year!",
             },
         memberIdPrefixWarnings: {
             'DZG': "ONLY WITH MEDICAL NOTES",
@@ -290,7 +298,6 @@
     // ====================================================================
 
 function copyToClipboard(text) {
-        // Create a temporary textarea element to copy the text.
         const textarea = document.createElement('textarea');
         textarea.value = text;
         textarea.style.position = 'fixed';
@@ -403,22 +410,37 @@ function extractAnswerInfo(rowElement) {
         return (match && match[1]) ? match[1] : null;
     }
 
-    function extractPatientData(rowElement) {
+function extractPatientData(rowElement) {
         const data = {};
+
+        const historyIcon = rowElement.querySelector('img[lazyqtipapi*="fetchRepeatedStudiesHistory"]');
+        if (historyIcon) {
+            const historyUrl = historyIcon.getAttribute('lazyqtipapi');
+            data['History URL'] = historyUrl;
+
+            const dosMatch = historyUrl.match(/order_dos=(\d{2}\/\d{2}\/\d{4})/);
+            if (dosMatch && dosMatch[1]) {
+                data['DOS'] = dosMatch[1]; // e.g., "11/06/2025"
+            } else {
+                 data['DOS'] = 'N/A';
+            }
+        } else {
+            // Fallback, если иконки истории нет (маловероятно)
+            const dosCell = rowElement.querySelector('.x-grid3-td-2');
+            if (dosCell) {
+                data['DOS'] = dosCell.querySelector('.x-grid3-cell-inner')?.textContent.trim() || 'N/A';
+            }
+        }
 
         const specialistsColumn = rowElement.querySelector('.x-grid3-td-6');
         if (specialistsColumn) {
              data['Doctor'] = 'N/A';
              data['Referring facility'] = 'N/A';
-
              const rows = specialistsColumn.querySelectorAll('table.app-tip-table tr');
-
              rows.forEach(row => {
                  const labelCell = row.querySelector('.app-tip-table-th');
                  if (!labelCell) return;
-
                  const labelText = labelCell.textContent.toLowerCase();
-
                  if (labelText.includes('doctor:')) {
                      const doctorSpan = row.querySelector('td span');
                      data['Doctor'] = doctorSpan ? doctorSpan.textContent.trim() : 'N/A';
@@ -447,22 +469,17 @@ function extractAnswerInfo(rowElement) {
             data['Secondary insurance'] = 'N/A';
             data['Secondary insurance status text'] = 'N/A';
             data['Secondary insurance checked date'] = null;
-
             const allInfoBlocks = insuranceColumn.querySelectorAll('.x-grid3-cell-inner > div');
-
             allInfoBlocks.forEach(block => {
                 const insuranceSpan = block.querySelector('.text-bold.text-center > span');
                 if (!insuranceSpan) return;
-
                 const fullText = (insuranceSpan.textContent || '').trim().toLowerCase();
                 const qtipAttribute = block.querySelector('.app-eligibility-icon')?.getAttribute('qtip') || '';
-
                 let insuranceName = insuranceSpan.getAttribute('qtip');
                 if (!insuranceName || insuranceName.trim() === '') {
                      insuranceName = fullText.includes(':') ? fullText.split(':')[1].trim() : fullText.trim();
                 }
                 insuranceName = insuranceName.trim();
-
                 if (fullText.startsWith('primary:')) {
                     data['Primary insurance'] = insuranceName;
                     data['Primary insurance ID'] = getTableRowValue(block, 'Member ID') || 'N/A';
@@ -500,9 +517,7 @@ function extractAnswerInfo(rowElement) {
         if (studiesColumn) {
             studiesColumn.querySelectorAll('td[style*="vertical-align:top"]').forEach((tableCell, index) => {
                 const studyNum = index + 1, studyPrefix = `Study${studyNum}`;
-
                 data[studyPrefix] = tableCell.querySelector('table:nth-child(1) b span')?.textContent.trim() || 'N/A';
-
                 const diagTh = Array.from(tableCell.querySelectorAll('.app-tip-table-th')).find(th => th.textContent.includes('Diag:'));
                 if (diagTh) {
                     const diagTd = diagTh.nextElementSibling;
@@ -515,7 +530,144 @@ function extractAnswerInfo(rowElement) {
                 } else {
                      data[`Diagnos for ${studyPrefix}`] = 'N/A';
                 }
+                const readingTh = Array.from(tableCell.querySelectorAll('.app-tip-table-th')).find(th => th.textContent.includes('Reading:'));
+                if (readingTh) {
+                    const readingTd = readingTh.nextElementSibling;
+                    const readingSpans = readingTd?.querySelectorAll('.text-bold span');
+                    if (readingSpans && readingSpans.length > 0) {
+                        const parts = Array.from(readingSpans).map(span => span.textContent.trim());
+                        data[`Reading for ${studyPrefix}`] = parts.filter(p => p).join(' / ');
+                    } else if (readingTd?.querySelector('.text-bold')) {
+                        data[`Reading for ${studyPrefix}`] = readingTd.querySelector('.text-bold').textContent.trim();
+                    } else {
+                        data[`Reading for ${studyPrefix}`] = 'N/A';
+                    }
+                } else {
+                    data[`Reading for ${studyPrefix}`] = 'N/A';
+                }
+            });
+        }
+        return data;
+    }function extractPatientData(rowElement) {
+        const data = {};
 
+
+        const historyIcon = rowElement.querySelector('img[lazyqtipapi*="fetchRepeatedStudiesHistory"]');
+        if (historyIcon) {
+            const historyUrl = historyIcon.getAttribute('lazyqtipapi');
+            data['History URL'] = historyUrl;
+
+            const dosMatch = historyUrl.match(/order_dos=(\d{2}\/\d{2}\/\d{4})/);
+            if (dosMatch && dosMatch[1]) {
+                data['DOS'] = dosMatch[1]; // e.g., "11/06/2025"
+            } else {
+                 data['DOS'] = 'N/A';
+            }
+        } else {
+            const dosCell = rowElement.querySelector('.x-grid3-td-2');
+            if (dosCell) {
+                data['DOS'] = dosCell.querySelector('.x-grid3-cell-inner')?.textContent.trim() || 'N/A';
+            }
+        }
+
+        const specialistsColumn = rowElement.querySelector('.x-grid3-td-6');
+        if (specialistsColumn) {
+             data['Doctor'] = 'N/A';
+             data['Referring facility'] = 'N/A';
+             const rows = specialistsColumn.querySelectorAll('table.app-tip-table tr');
+             rows.forEach(row => {
+                 const labelCell = row.querySelector('.app-tip-table-th');
+                 if (!labelCell) return;
+                 const labelText = labelCell.textContent.toLowerCase();
+                 if (labelText.includes('doctor:')) {
+                     const doctorSpan = row.querySelector('td span');
+                     data['Doctor'] = doctorSpan ? doctorSpan.textContent.trim() : 'N/A';
+                 } else if (labelText.includes('facility:')) {
+                     const facilitySpan = row.querySelector('td span[qtitle]');
+                     data['Referring facility'] = facilitySpan ? facilitySpan.getAttribute('qtitle') : 'N/A';
+                 }
+             });
+        }
+
+        const patientColumn = rowElement.querySelector('.x-grid3-td-3');
+        if (patientColumn) {
+            data['Sex'] = patientColumn.querySelector('img[qtip="Female"], img[qtip="Male"]')?.getAttribute('qtip') || 'N/A';
+            data['DoB'] = getTableRowValue(patientColumn, 'DoB') || 'N/A';
+            const homeAddressRow = Array.from(patientColumn.querySelectorAll('table.app-tip-table tr')).find(tr => tr.querySelector('.app-tip-table-th')?.textContent.includes('Home address:'));
+            data['Home Address'] = homeAddressRow ? (homeAddressRow.querySelector('td')?.innerHTML || '').replace(/<div>/g, '').replace(/<br>/g, ', ').replace(/<[^>]*>/g, '').replace(/\s\s+/g, ' ').trim() : 'N/A';
+        }
+
+        const insuranceColumn = rowElement.querySelector('.x-grid3-td-4');
+        if(insuranceColumn){
+            data['Primary insurance'] = 'N/A';
+            data['Primary insurance ID'] = 'N/A';
+            data['Primary insurance status text'] = 'N/A';
+            data['Primary insurance checked date'] = null;
+            data['Insurance Subtype'] = 'N/A';
+            data['Secondary insurance'] = 'N/A';
+            data['Secondary insurance status text'] = 'N/A';
+            data['Secondary insurance checked date'] = null;
+            const allInfoBlocks = insuranceColumn.querySelectorAll('.x-grid3-cell-inner > div');
+            allInfoBlocks.forEach(block => {
+                const insuranceSpan = block.querySelector('.text-bold.text-center > span');
+                if (!insuranceSpan) return;
+                const fullText = (insuranceSpan.textContent || '').trim().toLowerCase();
+                const qtipAttribute = block.querySelector('.app-eligibility-icon')?.getAttribute('qtip') || '';
+                let insuranceName = insuranceSpan.getAttribute('qtip');
+                if (!insuranceName || insuranceName.trim() === '') {
+                     insuranceName = fullText.includes(':') ? fullText.split(':')[1].trim() : fullText.trim();
+                }
+                insuranceName = insuranceName.trim();
+                if (fullText.startsWith('primary:')) {
+                    data['Primary insurance'] = insuranceName;
+                    data['Primary insurance ID'] = getTableRowValue(block, 'Member ID') || 'N/A';
+                    data['Primary insurance status text'] = qtipAttribute;
+                    data['Primary insurance checked date'] = extractCheckedDate(qtipAttribute);
+                    data['Insurance Subtype'] = getInsuranceSubtype(data['Primary insurance'], data['Primary insurance ID']);
+                } else if (fullText.startsWith('secondary:')) {
+                    data['Secondary insurance'] = insuranceName;
+                    data['Secondary insurance status text'] = qtipAttribute;
+                    data['Secondary insurance checked date'] = extractCheckedDate(qtipAttribute);
+                }
+            });
+        }
+
+        const filesColumn = rowElement.querySelector('.x-grid3-td-5');
+        if (filesColumn) {
+            const attachmentsByStudy = {};
+            filesColumn.querySelectorAll('.grid-record').forEach(record => {
+                 const studyName = record.querySelector('span[qtip]:not(.text-green)')?.textContent.trim().replace('~', '').trim();
+                 if (!studyName) return;
+                 let fileType = '';
+                 const link = record.querySelector('a.action-link');
+                 const linkText = link?.textContent.trim() || '';
+                 if (link?.classList.contains('view-dicomfiles-link')) fileType = 'Images';
+                 else if (linkText.includes('Preliminary report')) fileType = 'Preliminary report';
+                 else if (linkText.includes('Final Report')) fileType = 'Final Report';
+                 else if (linkText) fileType = linkText;
+                 if (!attachmentsByStudy[studyName]) attachmentsByStudy[studyName] = [];
+                 if (fileType) attachmentsByStudy[studyName].push(fileType);
+            });
+            data.attachmentsByStudy = attachmentsByStudy;
+        }
+
+        const studiesColumn = rowElement.querySelector('.x-grid3-td-7');
+        if (studiesColumn) {
+            studiesColumn.querySelectorAll('td[style*="vertical-align:top"]').forEach((tableCell, index) => {
+                const studyNum = index + 1, studyPrefix = `Study${studyNum}`;
+                data[studyPrefix] = tableCell.querySelector('table:nth-child(1) b span')?.textContent.trim() || 'N/A';
+                const diagTh = Array.from(tableCell.querySelectorAll('.app-tip-table-th')).find(th => th.textContent.includes('Diag:'));
+                if (diagTh) {
+                    const diagTd = diagTh.nextElementSibling;
+                    const diagSpans = diagTd?.querySelectorAll('a span');
+                    if (diagSpans && diagSpans.length > 0) {
+                        data[`Diagnos for ${studyPrefix}`] = Array.from(diagSpans).map(span => (span.getAttribute('qtip')?.match(/<b>(.*?)<\/b>/) || [])[1] || span.textContent.trim()).join(', ');
+                    } else {
+                        data[`Diagnos for ${studyPrefix}`] = 'N/A';
+                    }
+                } else {
+                     data[`Diagnos for ${studyPrefix}`] = 'N/A';
+                }
                 const readingTh = Array.from(tableCell.querySelectorAll('.app-tip-table-th')).find(th => th.textContent.includes('Reading:'));
                 if (readingTh) {
                     const readingTd = readingTh.nextElementSibling;
@@ -535,7 +687,6 @@ function extractAnswerInfo(rowElement) {
         }
         return data;
     }
-
     function checkStudyConditions(studiesToCheck, allPatientStudies) {
         const conditions = !studiesToCheck ? [] : (Array.isArray(studiesToCheck) ? studiesToCheck : [studiesToCheck]);
 
@@ -605,8 +756,112 @@ function extractAnswerInfo(rowElement) {
             return false;
         }
     }
+    function calculateAge(dobString) {
+        const match = dobString.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (!match) return null;
 
-    function validatePatientData(extractedData, checkDocuments = true) {
+        try {
+            const birthDate = new Date(match[3], match[1] - 1, match[2]);
+            const today = new Date();
+
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age;
+        } catch (e) {
+            console.error("Error parsing DoB:", e);
+            return null;
+        }
+    }
+
+    function parseDate(dateString) {
+        if (!dateString) return null;
+
+        let match = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            return new Date(match[1], match[2] - 1, match[3]);
+        }
+
+        match = dateString.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (match) {
+            return new Date(match[3], match[1] - 1, match[2]);
+        }
+
+        match = dateString.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+        if (match) {
+            return new Date(match[3], match[2] - 1, match[1]);
+        }
+
+        return null;
+    }
+
+
+    function getDaysBetweenDates(date1, date2) {
+        if (!date1 || !date2) return null;
+
+        const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+        const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+
+        const differenceInMs = d1.getTime() - d2.getTime();
+
+        return Math.round(differenceInMs / (1000 * 60 * 60 * 24));
+    }
+
+    async function fetchHistoryData(historyUrl) {
+        if (!historyUrl) return [];
+
+        const fullUrl = new URL(historyUrl, window.location.origin).href;
+        const historyEntries = [];
+
+        try {
+            const response = await fetch(fullUrl);
+            if (!response.ok) return [];
+
+            const jsonData = await response.json(); // <-- Парсим JSON
+
+            if (!jsonData || !jsonData.success || !jsonData.data) {
+                return []; // Ошибка или пустые данные
+            }
+
+            for (const service of jsonData.data) {
+                const dos = service.order_dos; // YYYY-MM-DD
+                if (!dos) continue;
+
+                const studiesOnDate = [];
+                for (const study of service.studies) {
+                    if (study.study_short_name) {
+                        studiesOnDate.push(study.study_short_name);
+                    }
+                }
+
+                const insurancesOnDate = [];
+                for (const ins of service.insurances) {
+                    // Используем 'full_name' для большей точности
+                    if (ins.insurance_full_name) {
+                        insurancesOnDate.push(ins.insurance_full_name.toLowerCase());
+                    } else if (ins.insurance_short_name) {
+                         insurancesOnDate.push(ins.insurance_short_name.toLowerCase());
+                    }
+                }
+
+                historyEntries.push({
+                    dos: dos, // YYYY-MM-DD
+                    studies: studiesOnDate,
+                    insurances: insurancesOnDate
+                });
+            }
+            return historyEntries;
+
+        } catch (e) {
+            console.error('Error fetching/parsing history JSON:', e);
+            return [];
+        }
+    }
+
+function validatePatientData(extractedData, checkDocuments = true) {
         const result = { errors: [], warnings: [] };
 
         const primaryInsurance = (extractedData['Primary insurance'] || '').toLowerCase();
@@ -614,11 +869,12 @@ function extractAnswerInfo(rowElement) {
 
         const secondaryInsurance = (extractedData['Secondary insurance'] || 'N/A');
         const secondaryStatusText = (extractedData['Secondary insurance status text'] || '').toLowerCase();
-
         const patientGender = (extractedData['Sex'] || '').toLowerCase();
-
         const primaryInsuranceId = extractedData['Primary insurance ID'] || '';
         const facilityName = (extractedData['Referring facility'] || '').toLowerCase();
+        const patientAge = calculateAge(extractedData['DoB']);
+        const historyData = extractedData['History Data'] || [];
+        const currentOrderDOS = parseDate(extractedData['DOS']);
 
         const findRuleKey = (rulesObject, name) => Object.keys(rulesObject).find(k => {
             const keyLower = k.toLowerCase();
@@ -631,24 +887,20 @@ function extractAnswerInfo(rowElement) {
 
         const overrideKey = findRuleKey(validationRules.insuranceOverrides, primaryInsuranceSubtype);
         const prohibitedKey = findRuleKey(validationRules.prohibitedStudies, primaryInsuranceSubtype);
-
         const activeOverrides = overrideKey ? validationRules.insuranceOverrides[overrideKey] : {};
         const prohibitedStudies = prohibitedKey ? validationRules.prohibitedStudies[prohibitedKey] : [];
-
         const allowedStudiesUPPER = validationRules.defaultStudies.map(s => s.toUpperCase());
         const conditionallyValidStudiesUPPER = validationRules.conditionallyValidStudies.map(s => s.toUpperCase());
-
         const effectiveAllowedStudiesUPPER = [...allowedStudiesUPPER];
         for(const studyToReplace in activeOverrides) {
             const newStudy = activeOverrides[studyToReplace];
+            const newStudyUPPER = newStudy.toUpperCase();
             const index = effectiveAllowedStudiesUPPER.indexOf(studyToReplace.toUpperCase());
             if (index > -1) effectiveAllowedStudiesUPPER.splice(index, 1);
-
-            if(!conditionallyValidStudiesUPPER.includes(newStudy.toUpperCase())) {
-                effectiveAllowedStudiesUPPER.push(newStudy.toUpperCase());
+            if (!effectiveAllowedStudiesUPPER.includes(newStudyUPPER)) {
+                effectiveAllowedStudiesUPPER.push(newStudyUPPER);
             }
         }
-
         const allPatientStudies = Object.keys(extractedData).filter(k => k.startsWith('Study')).map(k => extractedData[k]);
         let conflictFound = false;
 
@@ -660,22 +912,20 @@ function extractAnswerInfo(rowElement) {
             return JSON.stringify(actualArray) === JSON.stringify(expectedArray);
         }
 
-
         if (extractedData['Sex'] === 'N/A') {
             result.errors.push('ОШИБКА: Пол пациента не указан.');
         }
-
         const primaryStatusText = (extractedData['Primary insurance status text'] || '').toLowerCase();
-        for (const phrase in validationRules.primaryStatusWarnings) {
-            if (primaryStatusText.includes(phrase.toLowerCase())) {
-                result.warnings.push(validationRules.primaryStatusWarnings[phrase]);
+        if (validationRules.primaryStatusWarnings) {
+            for (const phrase in validationRules.primaryStatusWarnings) {
+                if (primaryStatusText.includes(phrase.toLowerCase())) {
+                    result.warnings.push(validationRules.primaryStatusWarnings[phrase]);
+                }
             }
         }
-
         if (checkDateStale(extractedData['Primary insurance checked date'], validationRules.eligibilityMaxDays)) {
              result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Primary Eligibility устарел (проверен ${extractedData['Primary insurance checked date']}).`);
         }
-
         for (const facilityKey in validationRules.facilityInsuranceProhibitions) {
             if (checkFacilityMatch(facilityKey, facilityName)) {
                 validationRules.facilityInsuranceProhibitions[facilityKey].forEach(prohibitedIns => {
@@ -685,53 +935,52 @@ function extractAnswerInfo(rowElement) {
                 });
             }
         }
-
         for (const facilityKey in validationRules.facilityWarnings) {
             if (checkFacilityMatch(facilityKey, facilityName)) {
                 result.warnings.push(validationRules.facilityWarnings[facilityKey]);
             }
         }
-
         const warningKey = findRuleKey(validationRules.insuranceWarnings, primaryInsuranceSubtype);
         if (warningKey) {
             result.warnings.push(validationRules.insuranceWarnings[warningKey]);
         }
-
         for (const prefix in validationRules.memberIdPrefixWarnings) {
             if (primaryInsuranceId.startsWith(prefix)) {
                 result.warnings.push(validationRules.memberIdPrefixWarnings[prefix]);
             }
         }
-
         let globalRequiredReading = null;
-
         if (secondaryInsurance !== 'N/A') {
-            for (const phrase in validationRules.secondaryStatusWarnings) {
-                if (secondaryStatusText.includes(phrase.toLowerCase())) {
-                    result.warnings.push(validationRules.secondaryStatusWarnings[phrase]);
+            const statusToWatch = validationRules.secondaryInsuranceRules.secondaryStatusWarnings || validationRules.secondaryInsuranceRules.statusToWatch || [];
+            if (Array.isArray(statusToWatch)) {
+                const matchedStatus = statusToWatch.find(s => secondaryStatusText.includes(s));
+                if (matchedStatus) {
+                    result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Secondary страховка (${secondaryInsurance}) имеет статус: ${secondaryStatusText}.`);
                 }
             }
-
+            else if (typeof statusToWatch === 'object') {
+                 for (const phrase in statusToWatch) {
+                    if (secondaryStatusText.includes(phrase.toLowerCase())) {
+                        result.warnings.push(statusToWatch[phrase]);
+                    }
+                }
+            }
             if (checkDateStale(extractedData['Secondary insurance checked date'], validationRules.eligibilityMaxDays)) {
                  result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Secondary Eligibility устарел (проверен ${extractedData['Secondary insurance checked date']}).`);
             }
-
             for (const rule of validationRules.secondaryInsuranceRules.readingOverride) {
                 const primaryMatch = checkInsuranceMatch(rule.ifPrimary, primaryInsuranceSubtype);
                 const secondaryNameMatch = checkInsuranceMatch(rule.ifSecondaryName, secondaryInsurance.toLowerCase());
                 const secondaryStatusMatch = rule.ifSecondaryStatus.some(s => secondaryStatusText.includes(s));
-
                 if (primaryMatch && secondaryNameMatch && secondaryStatusMatch) {
                     globalRequiredReading = rule.requiredReading;
                     break;
                 }
             }
         }
-
         validationRules.conditional.forEach(rule => {
             if (rule.type === 'conflict') {
                 let ruleIsActive = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
-
                 if (ruleIsActive) {
                     const allConflictStudiesPresent = checkStudyConditions(rule.studies, allPatientStudies);
                     if (allConflictStudiesPresent) {
@@ -742,6 +991,33 @@ function extractAnswerInfo(rowElement) {
             }
         });
 
+        if (historyData.length > 0 && currentOrderDOS && validationRules.repeatInsuranceRules) {
+            const currentInsSubtype = primaryInsuranceSubtype; // 'hf medicare', '$medicare$'
+
+            const insRuleKey = findRuleKey(validationRules.repeatInsuranceRules, currentInsSubtype);
+
+            if (insRuleKey) {
+                const insRuleDays = validationRules.repeatInsuranceRules[insRuleKey] || validationRules.repeatInsuranceRules['DEFAULT_DAYS'];
+
+                for (const historyEntry of historyData) {
+
+                    const matchFound = historyEntry.insurances.some(histInsName => {
+                        return checkInsuranceMatch(currentInsSubtype, histInsName);
+                    });
+
+                    if (matchFound) {
+                        const historyDOS = parseDate(historyEntry.dos); // YYYY-MM-DD
+                        const daysDiff = getDaysBetweenDates(currentOrderDOS, historyDOS);
+
+                        if (daysDiff !== null && daysDiff > 0 && daysDiff <= insRuleDays) {
+                            result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Повторный визит! (Страховка ${primaryInsuranceSubtype} была ${historyEntry.dos}, ${daysDiff} д. назад).`);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
 
         for (let i = 1; extractedData[`Study${i}`]; i++) {
             let studyName = extractedData[`Study${i}`];
@@ -751,29 +1027,23 @@ function extractAnswerInfo(rowElement) {
             let conditionalReplacementApplied = false;
 
             if (!conflictFound) {
-                for (const rule of validationRules.conditional) {
+                // ... (логика conditional replacement)
+                 for (const rule of validationRules.conditional) {
                     if (rule.type === 'replacement') {
-
                          let genderMatch = !rule.gender || patientGender === rule.gender.toLowerCase();
                          if (!genderMatch) continue;
-
                          let insuranceMatch = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
-
                          if (rule.excludeInsurance) {
                             if (checkInsuranceMatch(rule.excludeInsurance, primaryInsuranceSubtype)) {
                                 insuranceMatch = false;
                             }
                          }
-
                          if (!insuranceMatch) continue;
-
                          const allTriggersPresent = checkStudyConditions(rule.ifStudyExists, allPatientStudies);
                          if (!allTriggersPresent) continue;
-
                          let studyMatches = false;
                          const studiesToReplace = Array.isArray(rule.studyToReplace) ? rule.studyToReplace : [rule.studyToReplace];
                          studyMatches = studiesToReplace.includes(studyName);
-
                          if (studyMatches) {
                             expectedStudyName = rule.newStudyName;
                             conditionalReplacementApplied = true;
@@ -787,23 +1057,18 @@ function extractAnswerInfo(rowElement) {
 
             if (studyName !== expectedStudyName) { result.errors.push(`Study${i}: Expected '${expectedStudyName}', found '${studyName}'.`); }
 
-
             if (!effectiveAllowedStudiesUPPER.includes(studyNameUPPER)) {
-
+                // ... (логика проверки 'неверный тест')
                 let isConditionallyValid = false;
                 let specificErrorAdded = false;
-
                 if (conditionallyValidStudiesUPPER.includes(studyNameUPPER)) {
-
                     const matchingRepRules = validationRules.conditional.filter(r =>
                         r.type === 'replacement' && r.newStudyName.toUpperCase() === studyNameUPPER
                     );
-
                     if (matchingRepRules.length > 0) {
                         isConditionallyValid = matchingRepRules.some(rule => {
                             let genderValid = !rule.gender || patientGender === rule.gender.toLowerCase();
                             if (!genderValid) return false;
-
                             let insMatch = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
                             if (rule.excludeInsurance) {
                                 if (checkInsuranceMatch(rule.excludeInsurance, primaryInsuranceSubtype)) {
@@ -811,32 +1076,26 @@ function extractAnswerInfo(rowElement) {
                                 }
                             }
                             if (!insMatch) return false;
-
                             if (!checkStudyConditions(rule.ifStudyExists, allPatientStudies)) {
                                 const ifStudyExistsArray = Array.isArray(rule.ifStudyExists) ? rule.ifStudyExists : [rule.ifStudyExists];
                                 const conditionText = ifStudyExistsArray.flat().join(', ');
-
                                 result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест "${studyName}" может использоваться только в комбинации с [${conditionText}].`);
                                 specificErrorAdded = true;
                                 return false;
                             }
                             return true;
                         });
-
                         if (!isConditionallyValid && !specificErrorAdded) {
                              result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест "${studyName}" не валиден для страховки "${primaryInsuranceSubtype}".`);
                              specificErrorAdded = true;
                         }
                     }
-
                     const activeOverridesUPPER = {};
                     for (const key in activeOverrides) {
                         activeOverridesUPPER[key.toUpperCase()] = activeOverrides[key].toUpperCase();
                     }
-
                     if (Object.values(activeOverridesUPPER).includes(studyNameUPPER)) {
                         const originalTest = Object.keys(activeOverridesUPPER).find(k => activeOverridesUPPER[k] === studyNameUPPER);
-
                         if (overrideKey) {
                             if (!allPatientStudies.map(s => s.toUpperCase()).includes(originalTest)) {
                                 isConditionallyValid = true;
@@ -850,9 +1109,7 @@ function extractAnswerInfo(rowElement) {
                         }
                     }
                 }
-
                 if (!isConditionallyValid && !conditionalReplacementApplied && !conflictFound && !specificErrorAdded) {
-
                     const expectedOverride = activeOverrides[studyName];
                     if (expectedOverride) {
                         result.errors.push(`Study${i} ('${studyName}'): неверный тест для страховки "${extractedData['Insurance Subtype']}". Ожидаемый тест: ${expectedOverride}.`);
@@ -876,10 +1133,41 @@ function extractAnswerInfo(rowElement) {
                 result.errors.push(`Study${i} ('${studyName}'): Expected Diag '${expectedStr}', found '${actualDiagnos || "empty"}'.`);
             }
 
+            if (expectedStudyName === 'Abdominal Aorta2') {
+                if (patientAge !== null && patientAge < 50) {
+                    result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Study${i} ('${expectedStudyName}'): Тест Abdominal Aorta2 обычно для пациентов 50+ (Возраст: ${patientAge}).`);
+                } else if (patientAge === null && extractedData['DoB'] !== 'N/A') {
+                    result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Study${i} ('${expectedStudyName}'): Не удалось проверить возраст (DoB: ${extractedData['DoB']}).`);
+                }
+            }
+
+            if (historyData.length > 0 && currentOrderDOS && validationRules.repeatStudyRules) {
+                const studyRuleDays = validationRules.repeatStudyRules[expectedStudyName] || validationRules.repeatStudyRules['DEFAULT_DAYS'];
+
+                for (const historyEntry of historyData) {
+                    // historyEntry.studies = ['ABD2', 'Thyroid', ...]
+                    const historyStudyName = historyEntry.studies.find(histStudy => {
+                        return histStudy.replace(/\d/g, '').trim() === expectedStudyName.replace(/\d/g, '').trim();
+                    });
+
+                    if (historyStudyName) {
+                        const historyDOS = parseDate(historyEntry.dos); // YYYY-MM-DD
+                        const daysDiff = getDaysBetweenDates(currentOrderDOS, historyDOS);
+
+                        if (daysDiff !== null && daysDiff > 0 && daysDiff <= studyRuleDays) {
+                            result.errors.push(`ПОВТОР!: Study${i} ('${expectedStudyName}'): Повторный тест! (Был ${historyEntry.dos}, ${daysDiff} д. назад).`);
+                            break;
+                        }
+                    }
+                }
+            }
+
+
             const reading = extractedData[`Reading for Study${i}`] || 'N/A';
             let specificRuleApplied = false;
 
             if (globalRequiredReading) {
+                // (Проверка globalRequiredReading)
                 if (reading !== globalRequiredReading) {
                     result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Неверный Reading. Из-за статуса Secondary страховки ("${secondaryStatusText}"), ожидается: "${globalRequiredReading}".`);
                 }
@@ -887,16 +1175,14 @@ function extractAnswerInfo(rowElement) {
             }
 
             validationRules.specificReadingRules.forEach(rule => {
+                // (Проверка specificReadingRules)
                 if (specificRuleApplied) return;
-
                 const insuranceMatch = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
                 const facilityMatch = checkFacilityMatch(rule.facility, facilityName);
-
                 const studyMatch = !rule.study ||
                                  (Array.isArray(rule.study) ?
                                   rule.study.map(s => s.toUpperCase()).includes(expectedStudyName.toUpperCase()) :
                                   expectedStudyName.toUpperCase() === rule.study.toUpperCase());
-
                 if (insuranceMatch && studyMatch && facilityMatch) {
                     if (reading !== rule.requiredReading) {
                         let errorMsg = `ОШИБКА: Study${i} ('${studyName}'): Неверный Reading. `;
@@ -913,56 +1199,62 @@ function extractAnswerInfo(rowElement) {
             });
 
             if (!specificRuleApplied) {
-                if (reading === 'N/A' || reading === '' || reading === 'NOT ASSIGNED') {
+                const attachments = extractedData.attachmentsByStudy?.[studyName] || [];
+                const hasFinalReport = attachments.includes('Final Report');
 
+                if (hasFinalReport) {
+                }
+                else if (reading === 'N/A' || reading === '' || reading === 'NOT ASSIGNED') {
                     let expectedDoctors = [];
-
                     const allDoctorsList = validationRules.allReadingDoctors || [];
-
                     const insRestrictionKey = findRuleKey(validationRules.doctorInsuranceRestrictions, primaryInsuranceSubtype);
                     let insuranceAllowedDoctors = allDoctorsList;
                     if (insRestrictionKey) {
                         insuranceAllowedDoctors = validationRules.doctorInsuranceRestrictions[insRestrictionKey];
                     }
-
                     const studyBaseName = expectedStudyName.toUpperCase();
                     let studyAllowedDoctors = allDoctorsList.filter(doctorName => {
                         const rules = validationRules.doctorRestrictions[doctorName];
                         if (!rules) return true;
-
                         return !rules.prohibits.some(p => {
                             const rule = p.toUpperCase();
                             return studyBaseName.includes(rule) || rule.includes(studyBaseName);
                         });
                     });
-
                     expectedDoctors = insuranceAllowedDoctors.filter(doc => studyAllowedDoctors.includes(doc));
-
                     let hint = `Ожидаемые врачи: ${expectedDoctors.join(', ')}`;
                     if (allDoctorsList.length === 0) {
-                        hint = "ПРЕДУПРЕЖДЕНИЕ: Блок 'allReadingDoctors' не найден в конфиге. Обновите validationRules.";
+                        hint = "ПРЕДУПРЕЖДЕНИЕ: Блок 'allReadingDoctors' не найден в конфиге.";
                     } else if (expectedDoctors.length === 0) {
                          hint = "Не найдено врачей, которые могут читать этот тест с этой страховкой!";
                     }
-
                     result.warnings.push(`Study${i} ('${studyName}'): Reading не назначен. ${hint}`);
-
-                } else {
+                }
+                else {
+                    let account, doctor, doctorToValidate;
                     const readingParts = reading.split(' / ').map(p => p.trim());
-                    const account = readingParts[0];
-                    const doctor = readingParts.length > 1 ? readingParts[1] : null;
-                    const doctorToValidate = doctor ? doctor : account;
-
                     const readingRule = validationRules.readingAccountRules.find(r => checkInsuranceMatch(r.insurance, primaryInsuranceSubtype));
 
-                    if (readingRule) {
-                        if (account !== readingRule.account) {
-                            result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Для страховки "${primaryInsuranceSubtype}" аккаунт Reading должен быть "${readingRule.account}", а не "${account}".`);
-                        }
+                    if (readingParts.length > 1) {
+                        account = readingParts[0];
+                        doctor = readingParts[1];
+                        doctorToValidate = doctor;
                     } else {
-                        if (account !== validationRules.defaultReadingAccount) {
-                            if (account !== 'SF HF') {
-                                result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Study${i} ('${studyName}'): Нестандартный аккаунт Reading "${account}". Ожидался "${validationRules.defaultReadingAccount}".`);
+                        doctor = readingParts[0];
+                        doctorToValidate = doctor;
+                        account = readingRule ? readingRule.account : validationRules.defaultReadingAccount;
+                    }
+
+                    if (readingParts.length > 1) {
+                        if (readingRule) {
+                            if (account !== readingRule.account) {
+                                result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Для страховки "${primaryInsuranceSubtype}" аккаунт Reading должен быть "${readingRule.account}", а не "${account}".`);
+                            }
+                        } else {
+                            if (account !== validationRules.defaultReadingAccount) {
+                                if (account !== 'SF HF') {
+                                    result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Study${i} ('${studyName}'): Нестандартный аккаунт Reading "${account}". Ожидался "${validationRules.defaultReadingAccount}".`);
+                                }
                             }
                         }
                     }
@@ -979,7 +1271,6 @@ function extractAnswerInfo(rowElement) {
                     if (doctorRuleKey) {
                         const prohibits = validationRules.doctorRestrictions[doctorRuleKey].prohibits;
                         const studyBaseName = expectedStudyName.toUpperCase();
-
                         if (prohibits.some(p => {
                             const rule = p.toUpperCase();
                             return studyBaseName.includes(rule) || rule.includes(studyBaseName);
@@ -990,8 +1281,8 @@ function extractAnswerInfo(rowElement) {
                 }
             }
 
-
             if (checkDocuments) {
+                // (Проверка 'Images' & 'Preliminary report')
                 const attachments = extractedData.attachmentsByStudy?.[studyName] || [];
                 if (!attachments.includes('Images') || !attachments.includes('Preliminary report')) {
                     let missing = [];
@@ -1009,7 +1300,6 @@ function extractAnswerInfo(rowElement) {
         }
         return result;
     }
-
 
     function displayValidationResult(row, { errors, warnings }) {
         const notesCell = row.querySelector('.x-grid3-td-8 .x-grid3-cell-inner');
@@ -1080,7 +1370,7 @@ function addButtonsToRows() {
             const button = document.createElement('button');
             button.textContent = '📄';
             button.title = `Copy ${label}`;
-            button.className = 'inline-copy-button';
+            button.className = 'inline-copy-button'; // Класс для проверки
             button.style.cssText = `
                 background: none;
                 border: none;
@@ -1094,7 +1384,6 @@ function addButtonsToRows() {
             };
             return button;
         };
-        // --- Конец новой функции ---
 
         const mainGrid = getMainGrid();
         if (!mainGrid) return;
@@ -1112,7 +1401,7 @@ function addButtonsToRows() {
                 copyAnswerButton.textContent = 'Copy answer';
                 copyAnswerButton.style.cssText = `padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #e0e0e0; cursor: pointer; font-size: 12px; width: 95px; text-align: center;`;
                 copyAnswerButton.addEventListener('click', () => {
-                    const info = extractAnswerInfo(row); 
+                    const info = extractAnswerInfo(row);
                     if (info) copyToClipboard(info + ' - ');
                 });
                 buttonsWrapper.appendChild(copyAnswerButton);
@@ -1120,14 +1409,18 @@ function addButtonsToRows() {
                 const checkButton = document.createElement('button');
                 checkButton.textContent = 'Check';
                 checkButton.style.cssText = `padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #2ECC71; color: white; cursor: pointer; font-size: 12px; width: 95px; text-align: center;`;
-                checkButton.addEventListener('click', () => {
+
+                checkButton.addEventListener('click', async () => {
                     observer.disconnect();
                     try {
                         row.style.backgroundColor = '';
                         const notesCell = row.querySelector('.x-grid3-td-8 .x-grid3-cell-inner');
-                        if (notesCell) notesCell.innerHTML = '&nbsp;';
+                        if (notesCell) notesCell.innerHTML = '<i>Проверка...</i>';
+
                         const extractedData = extractPatientData(row);
+
                         console.log("--- Extracted Data for Validation ---");
+                        console.log(`Дата проверки: ${new Date().toLocaleDateString("ru-RU")}`);
                         let logOutput = "";
                         for (const key in extractedData) {
                             if (key !== 'attachmentsByStudy' && Object.prototype.hasOwnProperty.call(extractedData, key)) {
@@ -1135,9 +1428,17 @@ function addButtonsToRows() {
                             }
                         }
                         console.log(logOutput);
+
+                        if (extractedData['History URL']) {
+                             extractedData['History Data'] = await fetchHistoryData(extractedData['History URL']);
+                             console.log("History Data:", extractedData['History Data']);
+                        }
+
                         console.log("-------------------------------------");
+
                         const validationResult = validatePatientData(extractedData, false); // Quick check
                         displayValidationResult(row, validationResult);
+
                     } catch (e) {
                         console.error("Error during 'Check' operation:", e);
                         row.style.backgroundColor = '#FFFFAA';
@@ -1147,16 +1448,14 @@ function addButtonsToRows() {
                         observer.observe(document.body, { childList: true, subtree: true });
                     }
                 });
+
                 buttonsWrapper.appendChild(checkButton);
             }
-            // --- Конец логики v1.76 ---
 
 
-            // --- Новая логика из v1.12 (иконки 📄) ---
             const patientNameCell = row.querySelector('.x-grid3-td-3');
             const memberIdCell = row.querySelector('.x-grid3-td-4');
 
-            // 1. Кнопка "Имя"
             if (patientNameCell) {
                 const patientNameElement = patientNameCell.querySelector('.text-bold span');
                 if (patientNameElement && !patientNameElement.parentNode.querySelector('.inline-copy-button')) {
@@ -1165,8 +1464,6 @@ function addButtonsToRows() {
                     patientNameElement.parentNode.appendChild(nameCopyButton);
                 }
 
-                // 2. Кнопка "Дата рождения (DoB)"
-                // (Используем улучшенный поиск, как в v1.12)
                 const dobTh = Array.from(patientNameCell.querySelectorAll('.app-tip-table-th')).find(th => th.textContent.includes('DoB:'));
                 if (dobTh) {
                     const dobTd = dobTh.nextElementSibling;
@@ -1178,7 +1475,6 @@ function addButtonsToRows() {
                 }
             }
 
-            // 3. Кнопка "Member ID"
             if (memberIdCell) {
                 const memberIdTh = Array.from(memberIdCell.querySelectorAll('.app-tip-table-th')).find(th => th.textContent.includes('Member ID:'));
                 if (memberIdTh) {
@@ -1190,7 +1486,6 @@ function addButtonsToRows() {
                     }
                 }
             }
-            // --- Конец новой логики v1.12 ---
         });
     }
 
