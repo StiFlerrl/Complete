@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.01
+// @version      2.02
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -40,7 +40,6 @@
             'Retro',
             'PELV3',
             'PEL TV',
-            'PELV2',
             'ABDO3cpt',
             'Retroperetonial3'
         ],
@@ -50,7 +49,6 @@
                 'ABD2': 'ABDO3',
                 'PEL2': 'PELV2',
             },
-
             'hip': {
                 'Retroperetonial2': 'Retro',
                 'Pelvic TV2': 'PEL TV',
@@ -76,6 +74,11 @@
             },
             'uhc': {
                 'Retroperetonial2': 'Retroperetonial3',
+                'Pelvic TV2': 'PEL TV',
+            },
+            '$essential plan$': {
+                'Retroperetonial2': 'Retroperetonial3',
+                'Pelvic TV2': 'PEL TV',
             },
             'wellcare': {
                 'Retroperetonial2': 'Retro',
@@ -216,7 +219,10 @@
 {"type":"conflict","studies":[['PELV2','PEL2'],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты PELV и AORTA не могут быть вместе."},
         ],
         facilityWarnings: {
-            'hong ye': "ПРЕДУПРЕЖДЕНИЕ: Проверить и выставить доктора согласно логу."
+            'hong ye': "ПРЕДУПРЕЖДЕНИЕ: Проверить и выставить доктора согласно логу.",
+            'lin gong': "ПРЕДУПРЕЖДЕНИЕ: Проверить и выставить доктора согласно логу.",
+            'el nunu': "ПРЕДУПРЕЖДЕНИЕ: Проверить и выставить доктора согласно логу.",
+            'urgent care': "ПРЕДУПРЕЖДЕНИЕ: Проверить и выставить доктора согласно логу.",
         },
         allReadingDoctors: [
             'Hikin, D.',
@@ -226,10 +232,10 @@
         ],
 
         doctorRestrictions: {
-            'Mittal, H.K.': { prohibits: ['ABD', 'PEL', 'THY', 'RETRO'] },
+            'Mittal, H.K.': { prohibits: ['$ABD2$', 'Ab2', '$Abdominal$', 'PEL2', 'PELV2', 'PEL TV','Pelvic TV2','PELV3', 'Thyroid', 'Retroperetonial2','Retroperetonial3','Retro'] },
             'Zakheim, A.R.': { prohibits: ['Echocardiogram'] },
-            'Hikin, D.':     { prohibits: ['ECHO', 'ABI', 'SUDO', 'VNG'] },
-            'Complete PC':   { prohibits: ['ECHO', 'THY', 'SUDO', 'ABI', 'VNG'] }
+            'Hikin, D.':     { prohibits: ['Echocardiogram', 'ABI', 'SUDO3', 'SUDO', 'VNG3'] },
+            'Complete PC':   { prohibits: ['Echocardiogram', 'Thyroid', 'SUDO3', 'SUDO', 'ABI', 'VNG3'] }
         },
         readingAccountRules: [
             { insurance: '$1199$', account: '1199' },
@@ -252,9 +258,9 @@
             '$cigna$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$elderplan$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$fidelis$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
-            '$hf essential$': ['Mittal, H.K.', 'Zakheim, A.R.'],
+            '$hf essential$': ['Zakheim, A.R.'],
             '$hf medicare$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
-            '$hf medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
+            '$hf medicaid$': ['Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$humana$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$hcp ipa$': ['Mittal, H.K.', 'Hikin, D.'],
             '$emblemhealth$': ['Hikin, D.'],
@@ -1010,7 +1016,7 @@ function extractAnswerInfo(rowElement) {
         if (!notesCell) return;
         const allMessages = [
             ...errors.map(e => `<span style="color: #9B0000;">❌ ${e}</span>`),
-            ...warnings.map(w => `<span style="color: #b07000;">⚠️ ${w}</span>`)
+            ...warnings.map(w => `<span style="color: #0075b0 ;">⚠️ ${w}</span>`) //#b07000
         ];
         if (errors.length > 0) {
             row.style.backgroundColor = '#FFDDDD';
@@ -1070,12 +1076,11 @@ function extractAnswerInfo(rowElement) {
     }
 
 function addButtonsToRows() {
-        // --- Новая вспомогательная функция из v1.12 ---
         const createCopyIconButton = (label, content) => {
             const button = document.createElement('button');
             button.textContent = '📄';
             button.title = `Copy ${label}`;
-            button.className = 'inline-copy-button'; // Класс для проверки
+            button.className = 'inline-copy-button';
             button.style.cssText = `
                 background: none;
                 border: none;
@@ -1095,7 +1100,6 @@ function addButtonsToRows() {
         if (!mainGrid) return;
 
         mainGrid.querySelectorAll('.x-grid3-row').forEach(row => {
-            // --- Логика из v1.76 (наши главные кнопки) ---
             const copyAllCell = row.querySelector('.x-grid3-td-1');
             if (copyAllCell && !copyAllCell.querySelector('.copy-buttons-wrapper[data-source="helper"]')) {
                 const buttonsWrapper = document.createElement('div');
@@ -1108,7 +1112,7 @@ function addButtonsToRows() {
                 copyAnswerButton.textContent = 'Copy answer';
                 copyAnswerButton.style.cssText = `padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #e0e0e0; cursor: pointer; font-size: 12px; width: 95px; text-align: center;`;
                 copyAnswerButton.addEventListener('click', () => {
-                    const info = extractAnswerInfo(row); // Использует нашу функцию v1.76
+                    const info = extractAnswerInfo(row); 
                     if (info) copyToClipboard(info + ' - ');
                 });
                 buttonsWrapper.appendChild(copyAnswerButton);
