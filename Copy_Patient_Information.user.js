@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.03
+// @version      2.04
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -65,7 +65,7 @@
                 'Pelvic TV2': 'PEL TV',
             },
             'molina': { 'Retroperetonial2': 'Retro' },
-            'bcbs somos': { 'ABD2': 'ABDO3' },
+            'bcbs somos': { 'ABD2': 'ABDO2' },
             '$fidelis$': {
                 'Pelvic TV2': 'PEL TV',
                 'Retroperetonial2': 'Retro',
