@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.04
+// @version      2.05
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -259,7 +259,8 @@
             '$1199$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             'molina': ['Mittal, H.K.', 'Zakheim, A.R.'],
             'aetna': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
-            '$bcbs medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
+            '$bcbs medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.'],
+            '$bcbs somos$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$empire y8e$': ['Complete PC'],
             '$empire vof$': ['Mittal, H.K.', 'Hikin, D.', 'Complete PC'],
             '$centers plan for healthy living$': ['Zakheim, A.R.'],
