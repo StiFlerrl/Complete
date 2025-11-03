@@ -258,7 +258,8 @@
             { insurance: 'hf essential', account: 'SF HF' },
             { insurance: 'metroplus', account: 'MetroPlus QHP' },
             { insurance: 'uhc', account: 'UHC' },
-            { insurance: 'oxford', account: 'MetroPlus QHP' },
+            { insurance: 'essential plan', account: 'UHC' },
+            { insurance: 'oxford', account: 'UHC' },
         ],
         defaultReadingAccount: 'Complete PC',
 
