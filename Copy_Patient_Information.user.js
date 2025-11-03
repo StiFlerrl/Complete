@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.07
+// @version      2.08
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -41,7 +41,8 @@
             'PELV3',
             'PEL TV',
             'ABDO3cpt',
-            'Retroperetonial3'
+            'Retroperetonial3',
+            'PELV2',
         ],
         eligibilityMaxDays: 30,
         repeatStudyRules: {
