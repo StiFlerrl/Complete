@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.06
+// @version      2.07
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -1162,7 +1162,7 @@ function validatePatientData(extractedData, checkDocuments = true) {
                         const daysDiff = getDaysBetweenDates(currentOrderDOS, historyDOS);
 
                         if (daysDiff !== null && daysDiff > 0 && daysDiff <= studyRuleDays) {
-                            result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Study${i} ('${expectedStudyName}'): Повторный тест! (Был ${historyEntry.dos}, ${daysDiff} д. назад).`);
+                            result.errors.push(`ПОВТОР: Study ${expectedStudyName} was done ${historyEntry.dos}, ${daysDiff} days ago.`);
                             break;
                         }
                     }
