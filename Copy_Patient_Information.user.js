@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.08
+// @version      2.09
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
