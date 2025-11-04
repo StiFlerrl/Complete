@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.09
+// @version      2.10
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -45,13 +45,11 @@
             'PELV2',
         ],
         eligibilityMaxDays: 30,
-        repeatStudyRules: {
-            'DEFAULT_DAYS': 180,
-        },
         repeatInsuranceRules: {
             'DEFAULT_DAYS': 180,
-            '$medicaid$': 365,
+            '$medicaid of new york$': 365,   // 1 год для Medicaid
         },
+
         insuranceOverrides: {
             '$medicare$': {
                 'ABD2': 'ABDO3',
@@ -106,7 +104,9 @@
             'ghi': ['SUDO3'],
             '$emblemhealth$': ['Echocardiogram'],
             '$hcp ipa$': ['Echocardiogram'],
-            'hf': ['SUDO3'],
+            '$hf medicare$': ['SUDO3'],
+            '$hf essential$': ['Echocardiogram', 'SUDO3'],
+            '$hf medicaid$': ['Echocardiogram', 'SUDO3'],
             '$centers plan for healthy living$': ['Echocardiogram'],
             'oxford': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','Retroperetonial2','SUDO3'],
             'centerlight': ['Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'SUDO3', 'VNG3', 'LEA', 'LEA2', 'ABI', 'LEV', 'UEA','Renal Doppler', 'Retroperetonial2', 'Renal', 'ABD2', 'ABDO3','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid', 'Soft tissue'],
@@ -136,14 +136,12 @@
             'insurance is inactive': 'ПРЕДУПРЕЖДЕНИЕ: Primary страховка неактивна.',
         },
 
-        secondaryStatusWarnings: {
-            'eligibility was not performed': 'ПРЕДУПРЕЖДЕНИЕ: Не проводилась проверка статуса Secondary (Eligibility).',
-            'insurance is inactive': 'ПРЕДУПРЕЖДЕНИЕ: Secondary страховка неактивна.',
-            'invalid/missing subscriber/insured id': 'ПРЕДУПРЕЖДЕНИЕ: Неверный ID Secondary страховки.'
-        },
-
-
         secondaryInsuranceRules: {
+            secondaryStatusWarnings: {
+                'insurance is inactive': 'ПРЕДУПРЕЖДЕНИЕ: Secondary страховка неактивна.',
+                'eligibility was not performed': 'ПРЕДУПРЕЖДЕНИЕ: Не проводилась проверка статуса Secondary (Eligibility).',
+                'invalid/missing subscriber/insured id': 'ПРЕДУПРЕЖДЕНИЕ: Неверный ID Secondary страховки.'
+            },
 
             readingOverride: [
                 {
@@ -818,7 +816,35 @@ function extractPatientData(rowElement) {
 
         return Math.round(differenceInMs / (1000 * 60 * 60 * 24));
     }
+function formatDaysToMonthsAndDays(totalDays) {
+        if (totalDays === null || totalDays === undefined) return "N/A";
+        if (totalDays < 0) totalDays = 0;
 
+        // Среднее кол-во дней в месяце
+        const avgDaysInMonth = 30.4375; // (365.25 / 12)
+
+        const months = Math.floor(totalDays / avgDaysInMonth);
+        const remainingDays = Math.round(totalDays % avgDaysInMonth);
+
+        let result = "";
+        if (months > 0) {
+            result += `${months} m.`;
+        }
+
+        if (remainingDays > 0) {
+            if (result.length > 0) {
+                result += " "; // Добавляем пробел
+            }
+            result += `${remainingDays} d.`;
+        }
+
+        if (result.length === 0) {
+            // Если прошло 0 дней (маловероятно, т.к. мы проверяем > 0)
+            return "0 d.";
+        }
+
+        return result;
+    }
     async function fetchHistoryData(historyUrl) {
         if (!historyUrl) return [];
 
@@ -963,14 +989,9 @@ function validatePatientData(extractedData, checkDocuments = true) {
         }
         let globalRequiredReading = null;
         if (secondaryInsurance !== 'N/A') {
-            const statusToWatch = validationRules.secondaryInsuranceRules.secondaryStatusWarnings || validationRules.secondaryInsuranceRules.statusToWatch || [];
-            if (Array.isArray(statusToWatch)) {
-                const matchedStatus = statusToWatch.find(s => secondaryStatusText.includes(s));
-                if (matchedStatus) {
-                    result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Secondary страховка (${secondaryInsurance}) имеет статус: ${secondaryStatusText}.`);
-                }
-            }
-            else if (typeof statusToWatch === 'object') {
+            // (Логика проверки Secondary страховки)
+            const statusToWatch = validationRules.secondaryInsuranceRules.secondaryStatusWarnings || validationRules.secondaryInsuranceRules.statusToWatch || {};
+            if (typeof statusToWatch === 'object' && !Array.isArray(statusToWatch)) {
                  for (const phrase in statusToWatch) {
                     if (secondaryStatusText.includes(phrase.toLowerCase())) {
                         result.warnings.push(statusToWatch[phrase]);
@@ -1003,29 +1024,7 @@ function validatePatientData(extractedData, checkDocuments = true) {
             }
         });
 
-        // --- ПРОВЕРКА (СТРАХОВКИ) ---
-        if (historyData.length > 0 && currentOrderDOS && validationRules.repeatInsuranceRules) {
-            const currentInsSubtype = primaryInsuranceSubtype;
-            const insRuleKey = findRuleKey(validationRules.repeatInsuranceRules, currentInsSubtype);
-
-            if (insRuleKey) {
-                const insRuleDays = validationRules.repeatInsuranceRules[insRuleKey] || validationRules.repeatInsuranceRules['DEFAULT_DAYS'];
-                for (const historyEntry of historyData) {
-                    const matchFound = historyEntry.insurances.some(histInsName => {
-                        return checkInsuranceMatch(currentInsSubtype, histInsName);
-                    });
-                    if (matchFound) {
-                        const historyDOS = parseDate(historyEntry.dos);
-                        const daysDiff = getDaysBetweenDates(currentOrderDOS, historyDOS);
-                        if (daysDiff !== null && daysDiff > 0 && daysDiff <= insRuleDays) {
-                            result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Повторный визит! (Страховка ${primaryInsuranceSubtype} была ${historyEntry.dos}, ${daysDiff} д. назад).`);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        // --- КОНЕЦ ПРОВЕРКИ (СТРАХОВКИ) ---
+        // (Проверка повторов страховки v1.84 - УДАЛЕНА из общей секции)
 
 
         for (let i = 1; extractedData[`Study${i}`]; i++) {
@@ -1071,13 +1070,19 @@ function validatePatientData(extractedData, checkDocuments = true) {
                 let isConditionallyValid = false;
                 let specificErrorAdded = false;
                 if (conditionallyValidStudiesUPPER.includes(studyNameUPPER)) {
+
                     const matchingRepRules = validationRules.conditional.filter(r =>
                         r.type === 'replacement' && r.newStudyName.toUpperCase() === studyNameUPPER
                     );
+
                     if (matchingRepRules.length > 0) {
+                        // --- ИСПРАВЛЕНИЕ v1.85: Логика для дедупликации ошибок ---
+
+                        // 1. Сначала просто проверяем, валиден ли ХОТЯ БЫ ОДИН (без добавления ошибок)
                         isConditionallyValid = matchingRepRules.some(rule => {
                             let genderValid = !rule.gender || patientGender === rule.gender.toLowerCase();
                             if (!genderValid) return false;
+
                             let insMatch = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
                             if (rule.excludeInsurance) {
                                 if (checkInsuranceMatch(rule.excludeInsurance, primaryInsuranceSubtype)) {
@@ -1085,20 +1090,44 @@ function validatePatientData(extractedData, checkDocuments = true) {
                                 }
                             }
                             if (!insMatch) return false;
+
                             if (!checkStudyConditions(rule.ifStudyExists, allPatientStudies)) {
-                                const ifStudyExistsArray = Array.isArray(rule.ifStudyExists) ? rule.ifStudyExists : [rule.ifStudyExists];
-                                const conditionText = ifStudyExistsArray.flat().join(', ');
-                                result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест "${studyName}" может использоваться только в комбинации с [${conditionText}].`);
-                                specificErrorAdded = true;
                                 return false;
                             }
-                            return true;
+                            return true; // Найдено валидное правило
                         });
-                        if (!isConditionallyValid && !specificErrorAdded) {
-                             result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест "${studyName}" не валиден для страховки "${primaryInsuranceSubtype}".`);
-                             specificErrorAdded = true;
+
+                        // 2. Если ни одно правило не подошло, добавляем ОДНУ ошибку
+                        if (!isConditionallyValid) {
+                            specificErrorAdded = true;
+
+                            // Используем ПЕРВОЕ правило для генерации сообщения об ошибке
+                            const firstRule = matchingRepRules[0];
+
+                            let genderValid = !firstRule.gender || patientGender === firstRule.gender.toLowerCase();
+                            let insMatch = checkInsuranceMatch(firstRule.insurance, primaryInsuranceSubtype);
+                            if (firstRule.excludeInsurance) {
+                                if (checkInsuranceMatch(firstRule.excludeInsurance, primaryInsuranceSubtype)) insMatch = false;
+                            }
+                            let conditionsMatch = checkStudyConditions(firstRule.ifStudyExists, allPatientStudies);
+
+                            // Находим причину
+                            if (!genderValid) {
+                                result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест не валиден для пола пациента.`);
+                            } else if (!insMatch) {
+                                result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест не валиден для страховки "${primaryInsuranceSubtype}".`);
+                            } else if (!conditionsMatch) {
+                                const ifStudyExistsArray = Array.isArray(firstRule.ifStudyExists) ? firstRule.ifStudyExists : [firstRule.ifStudyExists];
+                                const conditionText = ifStudyExistsArray.flat().join(', ');
+                                result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест "${studyName}" может использоваться только в комбинации с [${conditionText}].`);
+                            } else {
+                                // Запасная ошибка
+                                result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест "${studyName}" не валиден (неизвестная причина).`);
+                            }
                         }
+                        // --- КОНЕЦ ИСПРАВЛЕНИЯ v1.85 ---
                     }
+
                     const activeOverridesUPPER = {};
                     for (const key in activeOverrides) {
                         activeOverridesUPPER[key.toUpperCase()] = activeOverrides[key].toUpperCase();
@@ -1150,27 +1179,48 @@ function validatePatientData(extractedData, checkDocuments = true) {
                 }
             }
 
-            // --- ПРОВЕРКА ПОВТОРОВ (СТАДИ) ---
-            if (historyData.length > 0 && currentOrderDOS && validationRules.repeatStudyRules) {
-                const studyRuleDays = validationRules.repeatStudyRules[expectedStudyName] || validationRules.repeatStudyRules['DEFAULT_DAYS'];
+            // --- ПРОВЕРКА ПОВТОРОВ (v1.84) ---
+            if (historyData.length > 0 && currentOrderDOS && validationRules.repeatInsuranceRules) {
+
+                const insRuleKey = findRuleKey(validationRules.repeatInsuranceRules, primaryInsuranceSubtype);
+                let studyRuleDays;
+
+                if (insRuleKey) {
+                    studyRuleDays = validationRules.repeatInsuranceRules[insRuleKey];
+                } else if (validationRules.repeatInsuranceRules['DEFAULT_DAYS']) {
+                    studyRuleDays = validationRules.repeatInsuranceRules['DEFAULT_DAYS'];
+                } else {
+                    studyRuleDays = 90; // Fallback
+                }
 
                 for (const historyEntry of historyData) {
-                    const historyStudyName = historyEntry.studies.find(histStudy => {
+
+                    const insuranceMatch = historyEntry.insurances.some(histInsName =>
+                        checkInsuranceMatch(primaryInsuranceSubtype, histInsName)
+                    );
+
+                    if (!insuranceMatch) {
+                        continue;
+                    }
+
+                    const studyMatch = historyEntry.studies.find(histStudy => {
                         return histStudy.replace(/\d/g, '').trim() === expectedStudyName.replace(/\d/g, '').trim();
                     });
 
-                    if (historyStudyName) {
+                    if (studyMatch) {
                         const historyDOS = parseDate(historyEntry.dos);
                         const daysDiff = getDaysBetweenDates(currentOrderDOS, historyDOS);
 
                         if (daysDiff !== null && daysDiff > 0 && daysDiff <= studyRuleDays) {
-                            result.errors.push(`ПОВТОР: Study ${expectedStudyName} was done ${historyEntry.dos}, ${daysDiff} days ago.`);
+                            const timeAgo = formatDaysToMonthsAndDays(daysDiff);
+                            result.errors.push(`ПОВТОР: Study '${expectedStudyName}' was done for ${primaryInsuranceSubtype}! ${historyEntry.dos}, ${timeAgo} ago`);
                             break;
                         }
                     }
                 }
             }
-            // --- КОНЕЦ ПРОВЕРКИ (СТАДИ) ---
+            // --- КОНЕЦ ПРОВЕРКИ (v1.84) ---
+
 
             // --- БЛОК READING (v1.82) ---
             const reading = extractedData[`Reading for Study${i}`] || 'N/A';
@@ -1259,7 +1309,7 @@ function validatePatientData(extractedData, checkDocuments = true) {
                         account = readingRule ? readingRule.account : validationRules.defaultReadingAccount;
                     }
 
-                    // --- НОВАЯ ПРОВЕРКА (Врач + Страховка + Тест) ---
+                    // --- ПРОВЕРКА (Врач + Страховка + Тест) ---
                     let specificDoctorRuleTriggered = false; // Новый флаг
                     if (validationRules.specificDoctorStudyRules) {
                         for (const rule of validationRules.specificDoctorStudyRules) {
@@ -1282,7 +1332,7 @@ function validatePatientData(extractedData, checkDocuments = true) {
                             }
                         }
                     }
-                    // --- КОНЕЦ НОВОЙ ПРОВЕРКИ ---
+                    // --- КОНЕЦ ПРОВЕРКИ ---
 
                     // Если специфическое правило НЕ сработало, запускаем общие проверки
                     if (!specificDoctorRuleTriggered) {
