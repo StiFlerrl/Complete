@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.12
+// @version      2.13
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -11,6 +11,12 @@
 
 (function() {
     'use strict';
+
+    const SCRIPT_VERSION = '2.13';
+    // ---
+
+    // ====================================================================
+    // RULES CONFIGURATION
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -1507,8 +1513,33 @@ function validatePatientData(extractedData, checkDocuments = true) {
         newCell.appendChild(table);
         toolbar.appendChild(newCell);
     }
+        function addVersionDisplay() {
+        if (typeof SCRIPT_VERSION === 'undefined' || document.getElementById('helper-version-display')) {
+             return;
+        }
 
-function addButtonsToRows() {
+        const toolbar = document.querySelector('.app-order-tools .x-toolbar-left-row');
+        if (!toolbar) return;
+
+        const newCell = document.createElement('td');
+        newCell.className = 'x-toolbar-cell';
+        newCell.id = 'helper-version-display';
+
+        const versionSpan = document.createElement('span');
+        versionSpan.textContent = `Helper v${SCRIPT_VERSION}`;
+        versionSpan.style.cssText = `
+            font-size: 10px;
+            color: #888; /* Серый цвет */
+            margin-left: 10px;
+            vertical-align: middle;
+            font-style: italic;
+            line-height: 20px; /* Для выравнивания по центру кнопки */
+        `;
+
+        newCell.appendChild(versionSpan);
+        toolbar.appendChild(newCell);
+    }
+        function addButtonsToRows() {
         const createCopyIconButton = (label, content) => {
             const button = document.createElement('button');
             button.textContent = '📄';
@@ -1635,6 +1666,7 @@ function addButtonsToRows() {
     function runScript() {
         addButtonsToRows();
         addCheckOrderButton();
+        addVersionDisplay();
     }
 
     observer = new MutationObserver((mutations) => {
