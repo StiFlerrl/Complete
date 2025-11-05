@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.10
+// @version      2.11
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -387,7 +387,7 @@ function extractAnswerInfo(rowElement) {
         let patientName = patientNameElement ? patientNameElement.textContent.trim() : '';
         if (patientName.includes(',')) {
             const parts = patientName.split(',').map(p => p.trim());
-            patientName = `${parts[1]} ${parts[0]}`;
+            patientName = `${parts[0]}, ${parts[1]}`;
         }
         const insuranceNameElement = rowElement.querySelector('.x-grid3-td-4 .text-bold > span');
         let insuranceName = '';
