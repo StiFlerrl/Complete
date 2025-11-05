@@ -134,6 +134,7 @@
         primaryStatusWarnings: {
             'eligibility was not performed': 'ПРЕДУПРЕЖДЕНИЕ: Не проводилась проверка статуса Primary (Eligibility).',
             'insurance is inactive': 'ПРЕДУПРЕЖДЕНИЕ: Primary страховка неактивна.',
+            'invalid/missing subscriber/insured id': 'ПРЕДУПРЕЖДЕНИЕ: Неверный ID Primary страховки.'
         },
 
         secondaryInsuranceRules: {
@@ -207,23 +208,23 @@
             { type: 'conflict', insurance: ['aetna', '$fidelis$', 'humana', '$bcbs medicaid$','$empire etrbj$' , 'molina', 'wellcare', 'hf', 'uhc', 'essential plan','$emblemhealth$'], studies: [['ABD2','ABDO3','Ab2','Abdominal'], 'Renal Doppler'], message: "КОНФЛИКТ: Для этой страховки нельзя в один день делать ABD и Renal Doppler." },
             { type: 'conflict', insurance: 'aetna', studies: ['ABI', ['Echocardiogram','Carotid','Abdominal Aorta2','LEA','LEV']], message: "КОНФЛИКТ: Для AETNA нельзя в один день делать эти исследования и ABI." },
             { type: 'conflict', studies: [['ABD2','ABDO3','Ab2','Abdominal'],['PELV2','PEL2']], message: "КОНФЛИКТ: Тесты ABD и PEL не могут быть вместе." },
-            {"type":"conflict","studies":[["Carotid"],["UEA"]],"message":"КОНФЛИКТ: Тесты Carotid и UEA не могут быть вместе."},
-{"type":"conflict","studies":[["Carotid"],["Soft tissue"]],"message":"КОНФЛИКТ: Тесты Carotid и Soft tissue не могут быть вместе."},
-{"type":"conflict","studies":[["Carotid"],["Thyroid"]],"message":"КОНФЛИКТ: Тесты Carotid и THY не могут быть вместе."},
-{"type":"conflict","studies":[["LEA"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты LEA и AORTA не могут быть вместе."},
-{"type":"conflict","studies":[["UEA"],["Soft tissue"]],"message":"КОНФЛИКТ: Тесты UEA и Soft tissue не могут быть вместе."},
-{"type":"conflict","studies":[["UEA"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты UEA и AORTA не могут быть вместе."},
-{"type":"conflict","studies":[["LEV"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты LEV и AORTA не могут быть вместе."},
-{"type":"conflict","studies":[["Soft tissue"],["ABI"]],"message":"КОНФЛИКТ: Тесты Soft tissue и ABI не могут быть вместе."},
-{"type":"conflict","studies":[["Soft tissue"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты Soft tissue и AORTA не могут быть вместе."},
-{"type":"conflict","studies":[['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и Renal Bladder не могут быть вместе."},
-{"type":"conflict","studies":[['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и AORTA не могут быть вместе."},
-{"type":"conflict","studies":[["Renal Doppler"],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и REN BLADDER не могут быть вместе."},
-{"type":"conflict","studies":[["Renal Doppler"],['PELV2','PEL2']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и PELV не могут быть вместе."},
-{"type":"conflict","studies":[["Renal Doppler"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты REN DOPPLER и AORTA не могут быть вместе."},
-{"type":"conflict","studies":[['Retroperetonial2','Retroperetonial3','Retro'],['PELV2','PEL2']],"message":"КОНФЛИКТ: Тесты REN BLADDER и PELV не могут быть вместе."},
-{"type":"conflict","studies":[['Retroperetonial2','Retroperetonial3','Retro'],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты REN BLADDER и AORTA не могут быть вместе."},
-{"type":"conflict","studies":[['PELV2','PEL2'],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты PELV и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [["Carotid"],["UEA"]],"message":"КОНФЛИКТ: Тесты Carotid и UEA не могут быть вместе."},
+            { type: 'conflict',studies: [["Carotid"],["Soft tissue"]],"message":"КОНФЛИКТ: Тесты Carotid и Soft tissue не могут быть вместе."},
+            { type: 'conflict',studies: [["Carotid"],["Thyroid"]],"message":"КОНФЛИКТ: Тесты Carotid и THY не могут быть вместе."},
+            { type: 'conflict',studies: [["LEA"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты LEA и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [["UEA"],["Soft tissue"]],"message":"КОНФЛИКТ: Тесты UEA и Soft tissue не могут быть вместе."},
+            { type: 'conflict',studies: [["UEA"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты UEA и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [["LEV"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты LEV и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [["Soft tissue"],["ABI"]],"message":"КОНФЛИКТ: Тесты Soft tissue и ABI не могут быть вместе."},
+            { type: 'conflict',studies: [["Soft tissue"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты Soft tissue и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и Renal Bladder не могут быть вместе."},
+            { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [["Renal Doppler"],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и REN BLADDER не могут быть вместе."},
+            { type: 'conflict',studies: [["Renal Doppler"],['PELV2','PEL2']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и PELV не могут быть вместе."},
+            { type: 'conflict',studies: [["Renal Doppler"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты REN DOPPLER и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['Retroperetonial2','Retroperetonial3','Retro'],['PELV2','PEL2']],"message":"КОНФЛИКТ: Тесты REN BLADDER и PELV не могут быть вместе."},
+            { type: 'conflict',studies: [['Retroperetonial2','Retroperetonial3','Retro'],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты REN BLADDER и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['PELV2','PEL2'],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты PELV и AORTA не могут быть вместе."},
         ],
         facilityWarnings: {
             'hong ye': "ПРЕДУПРЕЖДЕНИЕ: Проверить и выставить доктора согласно логу.",
@@ -236,6 +237,13 @@
             'Mittal, H.K.',
             'Zakheim, A.R.',
             'Complete PC',
+        ],
+        facilityInsuranceStudyProhibitions: [
+            {
+                facility: 'lin gong, md',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            }
         ],
         specificDoctorStudyRules: [
             {
@@ -296,6 +304,14 @@
             { facility: 'Ling Lu MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Jose Aristy, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Jin Song, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Lin Gong, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Jun Kang, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Rui Er Teng MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Hong Ye, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Gregory Rivera, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Dr. Yana Ryzhakova NP', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Juan Cortes, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Tamira Vannoy, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
         ]
     };
 
@@ -1066,7 +1082,7 @@ function validatePatientData(extractedData, checkDocuments = true) {
             if (studyName !== expectedStudyName) { result.errors.push(`Study${i}: Expected '${expectedStudyName}', found '${studyName}'.`); }
 
             if (!effectiveAllowedStudiesUPPER.includes(studyNameUPPER)) {
-                // ... (логика проверки 'неверный тест')
+                // ... (логика проверки 'неверный тест' v1.85)
                 let isConditionallyValid = false;
                 let specificErrorAdded = false;
                 if (conditionallyValidStudiesUPPER.includes(studyNameUPPER)) {
@@ -1076,9 +1092,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
                     );
 
                     if (matchingRepRules.length > 0) {
-                        // --- ИСПРАВЛЕНИЕ v1.85: Логика для дедупликации ошибок ---
-
-                        // 1. Сначала просто проверяем, валиден ли ХОТЯ БЫ ОДИН (без добавления ошибок)
                         isConditionallyValid = matchingRepRules.some(rule => {
                             let genderValid = !rule.gender || patientGender === rule.gender.toLowerCase();
                             if (!genderValid) return false;
@@ -1094,16 +1107,12 @@ function validatePatientData(extractedData, checkDocuments = true) {
                             if (!checkStudyConditions(rule.ifStudyExists, allPatientStudies)) {
                                 return false;
                             }
-                            return true; // Найдено валидное правило
+                            return true;
                         });
 
-                        // 2. Если ни одно правило не подошло, добавляем ОДНУ ошибку
                         if (!isConditionallyValid) {
                             specificErrorAdded = true;
-
-                            // Используем ПЕРВОЕ правило для генерации сообщения об ошибке
                             const firstRule = matchingRepRules[0];
-
                             let genderValid = !firstRule.gender || patientGender === firstRule.gender.toLowerCase();
                             let insMatch = checkInsuranceMatch(firstRule.insurance, primaryInsuranceSubtype);
                             if (firstRule.excludeInsurance) {
@@ -1111,7 +1120,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
                             }
                             let conditionsMatch = checkStudyConditions(firstRule.ifStudyExists, allPatientStudies);
 
-                            // Находим причину
                             if (!genderValid) {
                                 result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест не валиден для пола пациента.`);
                             } else if (!insMatch) {
@@ -1121,11 +1129,9 @@ function validatePatientData(extractedData, checkDocuments = true) {
                                 const conditionText = ifStudyExistsArray.flat().join(', ');
                                 result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест "${studyName}" может использоваться только в комбинации с [${conditionText}].`);
                             } else {
-                                // Запасная ошибка
                                 result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Тест "${studyName}" не валиден (неизвестная причина).`);
                             }
                         }
-                        // --- КОНЕЦ ИСПРАВЛЕНИЯ v1.85 ---
                     }
 
                     const activeOverridesUPPER = {};
@@ -1158,9 +1164,28 @@ function validatePatientData(extractedData, checkDocuments = true) {
                 }
             }
 
+            // Стандартная проверка запрета (Страховка + Тест)
             if (prohibitedStudies.includes(studyName)) {
                 result.errors.push(`Study${i} ('${studyName}'): ЗАПРЕЩЕН для страховки "${extractedData['Insurance Subtype']}".`);
             }
+
+            // --- НОВАЯ ПРОВЕРКА (Facility + Insurance + Study) v1.86 ---
+            if (validationRules.facilityInsuranceStudyProhibitions) {
+                for (const rule of validationRules.facilityInsuranceStudyProhibitions) {
+
+                    const facilityMatch = checkFacilityMatch(rule.facility, facilityName);
+                    if (!facilityMatch) continue; // Не наш facility, пропускаем
+
+                    const insuranceMatch = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
+                    if (!insuranceMatch) continue; // Не наша страховка, пропускаем
+
+                    // Facility и Insurance совпали, проверяем тесты
+                    if (rule.prohibitedStudies && rule.prohibitedStudies.includes(expectedStudyName)) {
+                        result.errors.push(`ОШИБКА: Study${i} ('${expectedStudyName}'): ЗАПРЕЩЕН для страховки "${primaryInsuranceSubtype}" в офисе "${extractedData['Referring facility']}".`);
+                    }
+                }
+            }
+            // --- КОНЕЦ НОВОЙ ПРОВЕРКИ ---
 
             expectedDiagnos = validationRules.masterStudyList[expectedStudyName];
             if (expectedDiagnos === undefined) {
