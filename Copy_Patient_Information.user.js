@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.11
+// @version      2.12
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -240,10 +240,60 @@
         ],
         facilityInsuranceStudyProhibitions: [
             {
+                facility: 'Ling Lu MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
+                        {
+                facility: 'Jose Aristy, MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
+                        {
+                facility: 'Jin Song, MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
+                        {
                 facility: 'lin gong, md',
                 insurance: 'hf',
                 prohibitedStudies: ['Echocardiogram']
-            }
+            },
+                        {
+                facility: 'Jun Kang, MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
+                        {
+                facility: 'Rui Er Teng MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
+                        {
+                facility: 'Hong Ye, MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
+                        {
+                facility: 'Gregory Rivera, MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
+                        {
+                facility: 'Dr. Yana Ryzhakova NP',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
+                        {
+                facility: 'Juan Cortes, MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
+                        {
+                facility: 'Tamira Vannoy, MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
         ],
         specificDoctorStudyRules: [
             {
@@ -836,8 +886,7 @@ function formatDaysToMonthsAndDays(totalDays) {
         if (totalDays === null || totalDays === undefined) return "N/A";
         if (totalDays < 0) totalDays = 0;
 
-        // Среднее кол-во дней в месяце
-        const avgDaysInMonth = 30.4375; // (365.25 / 12)
+        const avgDaysInMonth = 30.4375; 
 
         const months = Math.floor(totalDays / avgDaysInMonth);
         const remainingDays = Math.round(totalDays % avgDaysInMonth);
@@ -849,13 +898,12 @@ function formatDaysToMonthsAndDays(totalDays) {
 
         if (remainingDays > 0) {
             if (result.length > 0) {
-                result += " "; // Добавляем пробел
+                result += " ";
             }
             result += `${remainingDays} d.`;
         }
 
         if (result.length === 0) {
-            // Если прошло 0 дней (маловероятно, т.к. мы проверяем > 0)
             return "0 d.";
         }
 
@@ -871,14 +919,14 @@ function formatDaysToMonthsAndDays(totalDays) {
             const response = await fetch(fullUrl);
             if (!response.ok) return [];
 
-            const jsonData = await response.json(); // <-- Парсим JSON
+            const jsonData = await response.json();
 
             if (!jsonData || !jsonData.success || !jsonData.data) {
-                return []; // Ошибка или пустые данные
+                return []; 
             }
 
             for (const service of jsonData.data) {
-                const dos = service.order_dos; // YYYY-MM-DD
+                const dos = service.order_dos;
                 if (!dos) continue;
 
                 const studiesOnDate = [];
@@ -890,7 +938,6 @@ function formatDaysToMonthsAndDays(totalDays) {
 
                 const insurancesOnDate = [];
                 for (const ins of service.insurances) {
-                    // Используем 'full_name' для большей точности
                     if (ins.insurance_full_name) {
                         insurancesOnDate.push(ins.insurance_full_name.toLowerCase());
                     } else if (ins.insurance_short_name) {
@@ -965,7 +1012,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
             return JSON.stringify(actualArray) === JSON.stringify(expectedArray);
         }
 
-        // (Все проверки: Sex, Status, Eligibility, Facility, Warnings...)
         if (extractedData['Sex'] === 'N/A') {
             result.errors.push('ОШИБКА: Пол пациента не указан.');
         }
@@ -1005,7 +1051,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
         }
         let globalRequiredReading = null;
         if (secondaryInsurance !== 'N/A') {
-            // (Логика проверки Secondary страховки)
             const statusToWatch = validationRules.secondaryInsuranceRules.secondaryStatusWarnings || validationRules.secondaryInsuranceRules.statusToWatch || {};
             if (typeof statusToWatch === 'object' && !Array.isArray(statusToWatch)) {
                  for (const phrase in statusToWatch) {
@@ -1040,7 +1085,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
             }
         });
 
-        // (Проверка повторов страховки v1.84 - УДАЛЕНА из общей секции)
 
 
         for (let i = 1; extractedData[`Study${i}`]; i++) {
@@ -1051,7 +1095,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
             let conditionalReplacementApplied = false;
 
             if (!conflictFound) {
-                // ... (логика conditional replacement)
                  for (const rule of validationRules.conditional) {
                     if (rule.type === 'replacement') {
                          let genderMatch = !rule.gender || patientGender === rule.gender.toLowerCase();
@@ -1082,7 +1125,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
             if (studyName !== expectedStudyName) { result.errors.push(`Study${i}: Expected '${expectedStudyName}', found '${studyName}'.`); }
 
             if (!effectiveAllowedStudiesUPPER.includes(studyNameUPPER)) {
-                // ... (логика проверки 'неверный тест' v1.85)
                 let isConditionallyValid = false;
                 let specificErrorAdded = false;
                 if (conditionallyValidStudiesUPPER.includes(studyNameUPPER)) {
@@ -1164,28 +1206,24 @@ function validatePatientData(extractedData, checkDocuments = true) {
                 }
             }
 
-            // Стандартная проверка запрета (Страховка + Тест)
             if (prohibitedStudies.includes(studyName)) {
                 result.errors.push(`Study${i} ('${studyName}'): ЗАПРЕЩЕН для страховки "${extractedData['Insurance Subtype']}".`);
             }
 
-            // --- НОВАЯ ПРОВЕРКА (Facility + Insurance + Study) v1.86 ---
             if (validationRules.facilityInsuranceStudyProhibitions) {
                 for (const rule of validationRules.facilityInsuranceStudyProhibitions) {
 
                     const facilityMatch = checkFacilityMatch(rule.facility, facilityName);
-                    if (!facilityMatch) continue; // Не наш facility, пропускаем
+                    if (!facilityMatch) continue;
 
                     const insuranceMatch = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
-                    if (!insuranceMatch) continue; // Не наша страховка, пропускаем
+                    if (!insuranceMatch) continue;
 
-                    // Facility и Insurance совпали, проверяем тесты
                     if (rule.prohibitedStudies && rule.prohibitedStudies.includes(expectedStudyName)) {
                         result.errors.push(`ОШИБКА: Study${i} ('${expectedStudyName}'): ЗАПРЕЩЕН для страховки "${primaryInsuranceSubtype}" в офисе "${extractedData['Referring facility']}".`);
                     }
                 }
             }
-            // --- КОНЕЦ НОВОЙ ПРОВЕРКИ ---
 
             expectedDiagnos = validationRules.masterStudyList[expectedStudyName];
             if (expectedDiagnos === undefined) {
@@ -1204,7 +1242,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
                 }
             }
 
-            // --- ПРОВЕРКА ПОВТОРОВ (v1.84) ---
             if (historyData.length > 0 && currentOrderDOS && validationRules.repeatInsuranceRules) {
 
                 const insRuleKey = findRuleKey(validationRules.repeatInsuranceRules, primaryInsuranceSubtype);
@@ -1215,7 +1252,7 @@ function validatePatientData(extractedData, checkDocuments = true) {
                 } else if (validationRules.repeatInsuranceRules['DEFAULT_DAYS']) {
                     studyRuleDays = validationRules.repeatInsuranceRules['DEFAULT_DAYS'];
                 } else {
-                    studyRuleDays = 90; // Fallback
+                    studyRuleDays = 90;
                 }
 
                 for (const historyEntry of historyData) {
@@ -1244,15 +1281,12 @@ function validatePatientData(extractedData, checkDocuments = true) {
                     }
                 }
             }
-            // --- КОНЕЦ ПРОВЕРКИ (v1.84) ---
 
 
-            // --- БЛОК READING (v1.82) ---
             const reading = extractedData[`Reading for Study${i}`] || 'N/A';
             let specificRuleApplied = false;
 
             if (globalRequiredReading) {
-                // (Проверка globalRequiredReading)
                 if (reading !== globalRequiredReading) {
                     result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Неверный Reading. Из-за статуса Secondary страховки ("${secondaryStatusText}"), ожидается: "${globalRequiredReading}".`);
                 }
@@ -1260,7 +1294,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
             }
 
             validationRules.specificReadingRules.forEach(rule => {
-                // (Проверка specificReadingRules)
                 if (specificRuleApplied) return;
                 const insuranceMatch = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
                 const facilityMatch = checkFacilityMatch(rule.facility, facilityName);
@@ -1284,15 +1317,12 @@ function validatePatientData(extractedData, checkDocuments = true) {
             });
 
             if (!specificRuleApplied) {
-                // (Проверка Final Report)
                 const attachments = extractedData.attachmentsByStudy?.[studyName] || [];
                 const hasFinalReport = attachments.includes('Final Report');
 
                 if (hasFinalReport) {
-                    // Final Report есть, пропускаем
                 }
                 else if (reading === 'N/A' || reading === '' || reading === 'NOT ASSIGNED') {
-                    // (Логика "Подсказки")
                     let expectedDoctors = [];
                     const allDoctorsList = validationRules.allReadingDoctors || [];
                     const insRestrictionKey = findRuleKey(validationRules.doctorInsuranceRestrictions, primaryInsuranceSubtype);
@@ -1319,7 +1349,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
                     result.warnings.push(`Study${i} ('${studyName}'): Reading не назначен. ${hint}`);
                 }
                 else {
-                    // (Логика v1.77: "Аккаунт vs Врач")
                     let account, doctor, doctorToValidate;
                     const readingParts = reading.split(' / ').map(p => p.trim());
                     const readingRule = validationRules.readingAccountRules.find(r => checkInsuranceMatch(r.insurance, primaryInsuranceSubtype));
@@ -1334,7 +1363,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
                         account = readingRule ? readingRule.account : validationRules.defaultReadingAccount;
                     }
 
-                    // --- ПРОВЕРКА (Врач + Страховка + Тест) ---
                     let specificDoctorRuleTriggered = false; // Новый флаг
                     if (validationRules.specificDoctorStudyRules) {
                         for (const rule of validationRules.specificDoctorStudyRules) {
@@ -1343,7 +1371,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
                             const insuranceMatch = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
 
                             if (doctorMatch && insuranceMatch) {
-                                // Правило для этого врача и страховки НАЙДЕНО.
                                 specificDoctorRuleTriggered = true;
 
                                 const isAllowed = rule.allowedStudies.some(allowedStudy =>
@@ -1357,12 +1384,9 @@ function validatePatientData(extractedData, checkDocuments = true) {
                             }
                         }
                     }
-                    // --- КОНЕЦ ПРОВЕРКИ ---
 
-                    // Если специфическое правило НЕ сработало, запускаем общие проверки
                     if (!specificDoctorRuleTriggered) {
 
-                        // A. Проверка Аккаунта
                         if (readingParts.length > 1) {
                             if (readingRule) {
                                 if (account !== readingRule.account) {
@@ -1377,7 +1401,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
                             }
                         }
 
-                        // B. Проверка Врача (общие ограничения по страховке)
                         const insRestrictionKey = findRuleKey(validationRules.doctorInsuranceRestrictions, primaryInsuranceSubtype);
                         if (insRestrictionKey) {
                             const allowedDoctors = validationRules.doctorInsuranceRestrictions[insRestrictionKey];
@@ -1386,7 +1409,6 @@ function validatePatientData(extractedData, checkDocuments = true) {
                             }
                         }
 
-                        // C. Проверка запретов Врача (общие запреты на тесты)
                         const doctorRuleKey = Object.keys(validationRules.doctorRestrictions).find(k => doctorToValidate.includes(k));
                         if (doctorRuleKey) {
                             const prohibits = validationRules.doctorRestrictions[doctorRuleKey].prohibits;
@@ -1399,12 +1421,11 @@ function validatePatientData(extractedData, checkDocuments = true) {
                             }
                         }
 
-                    } // --- Конец if (!specificDoctorRuleTriggered)
-                } // --- Конец else (reading is assigned)
-            } // --- Конец if (!specificRuleApplied)
+                    }
+                }
+            }
 
             if (checkDocuments) {
-                // (Проверка 'Images' & 'Preliminary report')
                 const attachments = extractedData.attachmentsByStudy?.[studyName] || [];
                 if (!attachments.includes('Images') || !attachments.includes('Preliminary report')) {
                     let missing = [];
@@ -1413,10 +1434,9 @@ function validatePatientData(extractedData, checkDocuments = true) {
                     if (missing.length > 0) result.errors.push(`Study${i} ('${studyName}'): Missing ${missing.join(' & ')}.`);
                 }
             }
-        } // --- Конец цикла for (по тестам) ---
+        }
 
         if (checkDocuments) {
-            // (Проверка 'Home Address')
             if (!extractedData['Home Address'] || extractedData['Home Address'] === 'N/A' || extractedData['Home Address'].trim() === '') {
                 result.errors.push('ОШИБКА: Home Address не указан.');
             }
