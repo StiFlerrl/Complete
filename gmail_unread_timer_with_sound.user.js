@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Unread Timer + Sound Toggle & Snippets
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
@@ -17,6 +17,7 @@
   const ALERT_SOUND_URL       = 'https://raw.githubusercontent.com/StiFlerrl/Complete/main/plyus_org-z_uk-u_edomleniya-2.mp3';
   const STORAGE_KEY_POSITION  = 'gmail-helper-position';
   const STORAGE_KEY_WIDTH     = 'gmail-helper-width';
+  const IGNORED_LABELS = ['SCHEDULE MESSAGE', 'Log sheet'];
 
   const SNIPPETS = {
     referralHip: `We can only accept the patient after the referring office sends the referral with the following details:\n\nDr. Hikin Dimitry\nNPI: 1457619017\n3047 Ave U, 2nd Fl, Brooklyn, NY 11229\n\nUnfortunately, we won’t be able to proceed without the referral.\nPlease let us know once it has been submitted.\n\nThank you for your understanding!`,
