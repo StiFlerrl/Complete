@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Unread Timer + Sound Toggle & Snippets
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
@@ -160,9 +160,11 @@ function insertCompleteListFromClipboard() {
         });
         openBtn.addEventListener('click', () => {
           const rows = Array.from(document.querySelectorAll('tr.zA.zE'));
-          const sorted = rows.map(row => ({ row, date: getMessageDate(row) }))
-                            .filter(x => x.date && (Date.now() - x.date.getTime())/60000 > 10)
-                            .sort((a, b) => a.date - b.date);
+          const sorted = rows
+                                .filter(row => !hasIgnoredLabel(row))
+                                .map(row => ({ row, date: getMessageDate(row) }))
+                                .filter(x => x.date && (Date.now() - x.date.getTime())/60000 > 10)
+                                .sort((a, b) => a.date - b.date);
           if (sorted.length > 0) {
             const link = sorted[0].row.querySelector('td a') || sorted[0].row;
             if (link) link.click();
@@ -262,14 +264,36 @@ function insertCompleteListFromClipboard() {
     localStorage.setItem(STORAGE_KEY_WIDTH, rect.width + 'px');
   }
 
-  function getMessageDate(row){ const span=row.querySelector('span[title]'); return span?new Date(span.getAttribute('title')):null; }
+function getMessageDate(row){
+    const span=row.querySelector('span[title]');
+    return span?new Date(span.getAttribute('title')):null;
+  }
 
-  function refreshAll(){
-    createPopup(); const counts={under5:0,under10:0,over10:0};
-    document.querySelectorAll('tr.zA.zE').forEach(row=>{ const d=getMessageDate(row); if(!d)return; const m=Math.floor((Date.now()-d.getTime())/60000);
-      if(m<CATEGORIES[0].max) counts.under5++; else if(m<CATEGORIES[1].max) counts.under10++; else counts.over10++; });
-    CATEGORIES.forEach(cat=>{ const el=document.getElementById(`tm-cat-${cat.name}`); if(el) el.textContent=`${cat.label}: ${counts[cat.name]}`; });
-    if(counts.over10>0) playCustomSound(); const snap=JSON.stringify(counts); if(prevCounts===null||snap!==prevCounts) prevCounts=snap; }
+  function hasIgnoredLabel(row) {
+    for (const label of IGNORED_LABELS) {
+      if (row.querySelector(`div[title="${label}"]`) !== null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+ function refreshAll(){
+    createPopup();
+    const counts={under5:0,under10:0,over10:0};
+
+    document.querySelectorAll('tr.zA.zE').forEach(row=>{
+      if (hasIgnoredLabel(row)) return;
+      const d=getMessageDate(row);
+      const m=Math.floor((Date.now()-d.getTime())/60000);
+      if(m<CATEGORIES[0].max) counts.under5++;
+      else if(m<CATEGORIES[1].max) counts.under10++;
+      else counts.over10++; });
+    CATEGORIES.forEach(cat=>{ const el=document.getElementById(`tm-cat-${cat.name}`);
+                             if(el) el.textContent=`${cat.label}: ${counts[cat.name]}`; });
+    if(counts.over10>0) playCustomSound();
+      const snap=JSON.stringify(counts);
+      if(prevCounts===null||snap!==prevCounts) prevCounts=snap; }
 
   function observeMailList(){ const main=document.querySelector('div[role="main"]'); if(!main)return; let t; new MutationObserver(()=>{clearTimeout(t);t=setTimeout(refreshAll,500);}).observe(main,{childList:true,subtree:true}); }
 
