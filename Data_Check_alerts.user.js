@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Info check + alerts
 // @namespace    http://tampermonkey.net/
-// @version      2.41
-// @description  Transfer from billing fix + Name
+// @version      2.5
+// @description  Fix tabs 
 // @match        https://emdspc.emsow.com/*
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/Data_Check_alerts.user.js
@@ -21,7 +21,6 @@
   const norm = s => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const isVisible = el => !!(el && el.offsetParent) && getComputedStyle(el).visibility !== 'hidden';
 
-  // ---------- styles ----------
   (function css() {
     const st = document.createElement('style');
     st.textContent = `
@@ -33,7 +32,6 @@
     document.head.appendChild(st);
   })();
 
-  // ---------- tab helpers ----------
   const canonicalTab = raw => {
     const head = (raw || '').split(':')[0].trim().toLowerCase();
     if (head.startsWith('primary'))   return 'Primary';
@@ -43,22 +41,98 @@
     return 'Primary';
   };
 
-  const getActivePanel = winBody =>
-    winBody.querySelector('.x-tab-panel-body:not(.x-hide-display)') || winBody;
+// --- ИСПРАВЛЕНИЕ 1 (v21): Находит ПРАВИЛЬНУЮ активную панель ---
+  const getActivePanel = winBody => {
+    // --- (v21) ---
+    console.log('--- PIV DEBUG: (getActivePanel) v21 ЗАПУСК. Ищем :not(.x-hide-display)...');
 
-  const getActiveTabLabel = winBody => {
-    const n = winBody.closest('.x-window')?.querySelector('.x-tab-strip .x-tab-strip-active .x-tab-strip-text');
-    return canonicalTab(n?.textContent || '');
+    const xwindow = winBody.closest('.x-window');
+    if (!xwindow) {
+      console.error('--- PIV DEBUG: (v21) Не найден .x-window!');
+      return winBody;
+    }
+
+    const panelContainer = xwindow.querySelector('.x-tab-panel-bwrap');
+    if (!panelContainer) {
+      console.error('--- PIV DEBUG: (v21) Не найден .x-tab-panel-bwrap!');
+      return winBody;
+    }
+
+    // (v21) ПРАВИЛЬНЫЙ СЕЛЕКТОР
+    const contentBody = panelContainer.querySelector('.x-panel:not(.x-hide-display) .x-panel-body');
+
+    if (contentBody) {
+      console.log('--- PIV DEBUG: (v21) УСПЕХ! Найден .x-panel:not(.x-hide-display) .x-panel-body');
+      return contentBody;
+    } else {
+      console.error('--- PIV DEBUG: (v21) КРИТИЧЕСКАЯ ОШИБКА: Не найден contentBody!');
+      return winBody;
+    }
   };
 
-  // ---------- readiness waiters ----------
+// --- ИСПРАВЛЕНИЕ 2 (v22): Находит ПРАВИЛЬНЫЙ лейбл вкладки ---
+  const getActiveTabLabel = winBody => {
+    // --- (v22) ---
+    const p = getActivePanel(winBody); // Зависит от ИСПРАВЛЕНИЯ 1 (v21)
+    const xwin = p.closest('.x-window');
+    if (!xwin) return '?';
+
+    const tabStrip = xwin.querySelector('.x-tab-strip');
+    if (!tabStrip) return '??';
+
+    const activeTab = tabStrip.querySelector('ul > li.x-tab-strip-active');
+    if (!activeTab) return '???';
+
+    const label = activeTab.querySelector('.x-tab-strip-text');
+
+    // (Логика canonicalTab)
+    const raw = label ? label.textContent.trim() : '????';
+    const head = (raw || '').split(':')[0].trim().toLowerCase();
+    if (head.startsWith('primary'))   return 'Primary';
+    if (head.startsWith('secondary')) return 'Secondary';
+    if (head.startsWith('tertiary'))  return 'Tertiary';
+    if (head.startsWith('additional'))return 'Additional';
+    return 'Primary';
+  };
+
+// --- ИСПРАВЛЕНИЕ 3 (v20): "Терпеливое" ожидание стабилизации ---
   function waitForReadyChange(winBody, prevPanel, prevSig, cb, timeout = 15000) {
     const t0 = Date.now();
+    let lastStableSig = ''; // Последний "стабильный" текст
+    let lastCheckTime = 0; // Время последней проверки
+
+    console.log(`--- PIV DEBUG: (waitForReadyChange) v20 ЗАПУСК. Ждем "стабилизации" текста...`);
+
     (function tick() {
-      const p = getActivePanel(winBody);
+      const p = getActivePanel(winBody); // (v21)
       const sig = norm(p.textContent);
-      if (p !== prevPanel || (sig && sig !== prevSig) || Date.now() - t0 > timeout) { cb(); return; }
-      setTimeout(tick, 120);
+      const now = Date.now();
+
+      if (now - t0 > timeout) {
+        console.warn('--- PIV DEBUG: (waitForReadyChange) ТАЙМАУТ! Запускаем принудительно.');
+        cb();
+        return;
+      }
+
+      if (sig !== lastStableSig) {
+        console.log(`--- PIV DEBUG: (waitForReadyChange) ...текст ИЗМЕНИЛСЯ. Ждем дальше...`);
+        lastStableSig = sig;
+        lastCheckTime = now;
+        setTimeout(tick, 150);
+        return;
+      }
+
+      // Ждем, пока текст не будет "стабилен" 250мс
+      if (now - lastCheckTime > 250) {
+        // И запускаем, только если текст ДЕЙСТВИТЕЛЬНО новый
+        if (sig !== prevSig) {
+          console.log('--- PIV DEBUG: (waitForReadyChange) УСПЕХ! Текст "стабилен" 250мс. Вызываем cb().');
+          cb();
+        }
+        return;
+      }
+
+      setTimeout(tick, 150);
     })();
   }
 
@@ -73,7 +147,6 @@
     }, 140);
   }
 
-  // ---------- aggregator ----------
   function findTabStripHeader(winBody){
     return winBody.closest('.x-window')?.querySelector('.x-tab-panel-header') ||
            winBody.closest('.x-window')?.querySelector('.x-tab-strip-wrap') ||
@@ -101,7 +174,6 @@
     reorderAgg(agg);
   }
 
-  // ---------- scroller sizing ----------
   function getActiveScroller(winBody) {
     const activePanel = getActivePanel(winBody);
     const q = '.x-panel-body.x-panel-body-noheader.x-panel-body-noborder';
@@ -191,56 +263,45 @@
     return best;
   }
 
-  // ---------- main scan ----------
   function scanActiveTab(winBody, { force = false } = {}) {
     const panel = getActivePanel(winBody);
     const tab = getActiveTabLabel(winBody);
 
     adjustRepeated(winBody);
 
-    if (!force && winBody.__pivScanned?.[tab]) return;
 
     const sel = document.querySelector('div.x-grid3-row-selected .column-patient.app-overaction-body');
 let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
 
-    // 1. Источник Имени (NameSource): Берем из заголовка окна
-    // *** ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ КОНТЕКСТА: Ищем заголовок ТОЛЬКО в контейнере нашего окна (winBody) ***
+
     const winContainer = winBody.closest('.x-window');
     let nameSource = winContainer ? winContainer.querySelector('.x-window-header-text') : null;
 
-    // --- ПАРСИНГ ИМЕНИ ПАЦИЕНТА (ТОЧНОЕ РАЗДЕЛЕНИЕ ПО ЗАПЯТОЙ) ---
+
     if (nameSource) {
       let titleText = nameSource.textContent.trim();
-
-      // Парсинг имени и фамилии
       if (titleText.includes(',')) {
-        // КОРРЕКТНЫЙ ПАРСИНГ для "Фамилия, Имя" - БЕЗ СВАПА.
         const parts = titleText.split(',', 2);
 
-        // Очищаем Фамилию (первую часть)
         gridLast = parts[0]
             .replace(/Processing.*?:|Process.*?:/g, '')
             .replace(/Electronic eligibility for /g, '')
             .replace(/[()#\d{1,}]/g, ' ')
             .replace(/\s{2,}/g, ' ')
-            .trim();   // Вся часть до запятой
+            .trim();
 
-        // Очищаем Имя (вторую часть)
         gridFirst = (parts[1] || '')
             .replace(/[()#\d{1,}]/g, ' ')
             .replace(/\s{2,}/g, ' ')
-            .trim(); // Вся часть после -> Имя
+            .trim();
 
-        // Проверка на служебный текст
         if (gridLast.toLowerCase() === 'error' || gridLast.toLowerCase() === 'confirmation' || gridLast.toLowerCase() === '') {
           gridLast = '';
           gridFirst = '';
         }
 
       } else {
-        // Логика для имен БЕЗ ЗАПЯТОЙ (оставлена для компенсации свапа)
 
-        // Сначала очищаем всю строку
         titleText = titleText
             .replace(/Processing.*?:|Process.*?:/g, '')
             .replace(/Electronic eligibility for /g, '')
@@ -255,8 +316,8 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
         if (titleText.length > 0) {
             const p = titleText.split(/\s+/).filter(s => s.length > 0);
             if (p.length >= 2) {
-                gridLast = p.shift() || ''; // Первое слово -> Фамилия (компенсация свапа)
-                gridFirst = p.join(' '); // Остальное -> Имя
+                gridLast = p.shift() || '';
+                gridFirst = p.join(' ');
             } else {
                 gridFirst = p[0] || '';
                 gridLast = '';
@@ -265,29 +326,23 @@ let gridFirst = '', gridLast = '', procDOB = '', procGender = '';
       }
     }
 
-    // --- ЗАПАСНОЙ ВАРИАНТ: ПОЛУЧЕНИЕ ИМЕНИ И DOB ИЗ DOCUMENT.TITLE ---
     if (gridFirst.length === 0) {
         const mainTitle = document.title;
         let dtText = mainTitle.split('::')[1] || '';
         dtText = dtText.replace(/Complete Express Medical PC/i, '').trim();
 
-        // Извлечение DOB из Document Title
-// Извлечение DOB из Document Title (самый надежный DOB)
 const dobMatchTitle = dtText.match(/(\d{2}\/\d{2}\/\d{4})/);
 if (dobMatchTitle) {
-    procDOB = dobMatchTitle[0].replace(/[^0-9/]/g, ''); // <--- ДОБАВЛЕНО
+    procDOB = dobMatchTitle[0].replace(/[^0-9/]/g, '');
     dtText = dtText.replace(dobMatchTitle[0], '').trim();
 }
 
-        // Парсинг имени из Document Title
         if (dtText.includes(',')) {
-            // КОРРЕКТНЫЙ ПАРСИНГ для "Фамилия, Имя" - БЕЗ СВАПА.
             const parts = dtText.split(',', 2);
             gridLast = parts[0].trim();
             gridFirst = (parts[1] || '').trim();
         } else {
             const p = dtText.split(/\s+/).filter(s => s.length > 0);
-            // Принудительный "обратный свап" для Document Title:
             if (p.length >= 2) {
                 gridLast = p.shift() || '';
                 gridFirst = p.join(' ');
@@ -298,8 +353,6 @@ if (dobMatchTitle) {
         }
     }
 
-    // --- ПОИСК GENDER И РЕЗЕРВНОГО DOB В СЕТКЕ (ПО КОМПОНЕНТАМ ИМЕНИ) ---
-    // Нормализуем полные имя и фамилию для проверки наличия в строке сетки
     const targetFirst = norm(gridFirst);
     const targetLast = norm(gridLast);
 
@@ -310,13 +363,10 @@ if (dobMatchTitle) {
             const rowNameEl = block.querySelector('span[qtitle]');
             if (!rowNameEl) continue;
 
-            // 1. Получаем нормализованное полное имя из строки сетки
             const rowFullName = norm(rowNameEl.textContent.trim().replace(/,/g, ' '));
 
-            // 2. Сравниваем компоненты имени (Проверяем, что Фамилия И Имя присутствуют в строке сетки)
             if (rowFullName.includes(targetLast) && rowFullName.includes(targetFirst)) {
 
-                // Найдено совпадение! Извлекаем DOB/Gender
                 const tip = block.querySelector('table.app-tip-table');
 
                 if (tip) {
@@ -324,10 +374,8 @@ if (dobMatchTitle) {
                         const label = tr.querySelector('th, td:nth-child(1)')?.textContent.trim().toLowerCase();
                         const value = tr.querySelector('td:nth-child(2)')?.textContent.trim();
 
-                        // Заполняем DOB только если он не был найден
-// Заполняем DOB только если он не был найден
 if (label === 'dob:' && !procDOB) {
-    procDOB = (value || '').replace(/[^0-9/]/g, ''); // <--- ДОБАВЛЕНО
+    procDOB = (value || '').replace(/[^0-9/]/g, '');
 }
                         if (label === 'gender:') {
                           procGender = value || '';
@@ -335,7 +383,6 @@ if (label === 'dob:' && !procDOB) {
                     });
                 }
 
-                // Резервный поиск Gender
                 if (!procGender) {
                   procGender = block.querySelector('img[qtip]')?.getAttribute('qtip')?.trim() || '';
                 }
@@ -370,7 +417,9 @@ if (label === 'dob:' && !procDOB) {
     let matchedSimple = false;
     if (/simple\W+open\W*\(ppo\)/i.test(text)) { plans.push('Simple Open план обнаружен! Wellcare Copay $500'); matchedSimple = true; }
     if (!matchedSimple && /simple\W+open\b/i.test(text)) { plans.push('Simple Open план обнаружен! Wellcare Copay $500'); matchedSimple = true; }
-    if (!matchedSimple && /\bsimple\b/i.test(text))       { plans.push('Simple план обнаружен! Wellcare Copay $500'); }
+    if (!matchedSimple && /simple/i.test(text))       { plans.push('Simple план обнаружен! Wellcare Copay $500'); }
+    if (!matchedSimple && /Giveback open/i.test(text))       { plans.push('Giveback open план обнаружен! Wellcare Copay $350'); }
+
 
     add(/\bsomos\b/i,                      'SOMOS IPA план обнаружен! Не стадии можем разрешить');
     add(/\bhome\s*first\b|\bhomefirst\b/i,'HOMEFIRST план обнаружен! Elderplan HOMEFIRST cant accept');
@@ -380,11 +429,13 @@ if (label === 'dob:' && !procDOB) {
     add(/\bsenior\s*health\s*partners\b/i,'SENIOR HEALTH PARTNERS план обнаружен!');
     add(/\bsmall\s*group\s*epo\b/i,       'Small Group EPO план обнаружен!');
     add(/\bplatinum\s*total\s*epo\b/i,    'Platinum Total EPO план обнаружен!');
-    add(/\bsignature\b/i,                  'Signature план обнаружен! Copay 7-$25, 9-$60');
+    add(/\SIGHM1\b/i,                  'Signature план обнаружен! Copay 7-$60, 9-$25');
+    add(/\SIGHM2\b/i,                  'Signature план обнаружен! Copay 7-$60, 9-$25');
+    add(/MCRPPO/i,                  'Signature план обнаружен! Copay 7-$0, 9-$60! Ask for secondary insurance');
     add(/\blppo\s*aarp\b/i,                'Lppo AARP план обнаружен! Проверить Network Participation/Copay');
-    add(/\bgiveback\s*open\b/i,            'Giveback open план обнаружен! Wellcare Copay $350');
+    add(/\bGiveback\b/i,            'Giveback open план обнаружен! Wellcare Copay $350');
     add(/\bpremium\s*open\b/i,             'Premium Open план обнаружен! Wellcare Copay $150');
-    add(/\bpremium\b/i,                    'Premium план обнаружен! Wellcare Copay $250', !/\bpremium\s*open\b/i.test(text));
+    add(/\bpremium\b/i,                    'Premium план обнаружен! Wellcare Copay $250');
     add(/\bassist\s*open\b/i,              'ASSIST OPEN обнаружен! Wellcare Copay $100');
     add(/\bpayor\s*identification[:\s]*c7\b/i,'Payor Identification: C7 план обнаружен! Out of network with Centers Plan');
     add(/\b(?:ny\s*community\s*)?plan\s*for\s*adults\b/i,'Plan for Adults - Возможно требуется направление, необходимо проверить PCP');
@@ -395,35 +446,51 @@ if (label === 'dob:' && !procDOB) {
     add(/\bsilver\b/i,   'Silver план обнаружен! Проверь Deductible!');
     add(/\bleaf\b/i,     'Leaf план обнаружен! Проверь Deductible!');
 
-    const covStr  = '30: health benefit plan coverage';
+    const covStr  = '30: Health Benefit Plan Coverage';
     const eligTriggers = [
       'eligibility: contact following entity for eligibility or benefit information',
-      'eligibility: other or additional payor',
+      'Eligibility: Other or Additional Payor',
       'eligibility: other or additional payer'
     ];
     let hasPair = false;
-    const dt = panel.querySelector('table.eligibility-details');
-    if (dt) {
-      const row2 = dt.querySelector('tbody tr:nth-child(2)');
-      if (row2) {
-        const a = norm(row2.querySelector('td:first-child .eligibility-coverage .eligibility-service-type')?.textContent);
-        const right = norm(row2.querySelector('td:last-child  .eligibility-coverage')?.textContent);
-        const rightHasElig = eligTriggers.some(tr => right?.includes(tr));
-        const rightHasCQ = /\bcq:\s*case\s*management\b/i.test(right);
-        if (a === covStr && (rightHasElig || (rightHasCQ && /contact\s*following\s*entity/i.test(right)))) hasPair = true;
-      }
-    }
-    if (!hasPair) {
-      const t = norm(panel.textContent || '');
-      const i1 = t.indexOf(covStr);
-      if (i1 !== -1) {
-        const after = t.slice(i1, i1 + 800);
-        const reAfter = /(?:\bcq:\s*case\s*management\b[\s\S]{0,200})?eligibility:\s*(?:contact\s*following\s*entity\s*for\s*eligibility\s*or\s*benefit\s*information|other\s*or\s*additional\s*pay(?:or|er))/i;
-        hasPair = reAfter.test(after);
-      }
+    const normTriggers = eligTriggers.map(norm);
+    const normCov = norm(covStr);
+
+    // 1. СНАЧАЛА ПЫТАЕМСЯ НАЙТИ ПО СТРУКТУРЕ (наш прошлый, хороший вариант)
+    // Ищем все блоки с информацией внутри панели
+    const coverageBlocks = panel.querySelectorAll('div.eligibility-coverage');
+    if (coverageBlocks.length > 0) {
+        for (const block of coverageBlocks) {
+            const blockText = norm(block.textContent);
+
+            const hasCov = blockText.includes(normCov);
+            const hasElig = normTriggers.some(tr => blockText.includes(tr));
+            const hasCQ = /\bcq:\s*case\s*management\b/i.test(blockText) && /contact\s*following\s*entity/i.test(blockText);
+
+            if (hasCov && (hasElig || hasCQ)) {
+                hasPair = true;
+                break; // Нашли, выходим
+            }
+        }
     }
 
-    // Payor Identification (коды)
+    // 2. "ЗАПАСНАЯ" ПРОВЕРКА (теперь с исправленной ошибкой)
+    // Сработает, только если hasPair все еще false
+    if (!hasPair) {
+        const t = norm(panel.textContent || '');
+
+        // --- ВОТ ИСПРАВЛЕНИЕ ---
+        // Ищем нормализованный covStr в нормализованном тексте
+        const i1 = t.indexOf(normCov);
+        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
+
+        if (i1 !== -1) {
+            const after = t.slice(i1, i1 + 800);
+            const reAfter = /(?:\bcq:\s*case\s*management\b[\s\S]{0,200})?eligibility:\s*(?:contact\s*following\s*entity\s*for\s*eligibility\s*or\s*benefit\s*information|other\s*or\s*additional\s*pay(?:or|er))/i;
+            hasPair = reAfter.test(after);
+        }
+    }
+
     let payorMsg = null;
     const pm = (panel.textContent || '').match(/Payor Identification:\s*([A-Za-z0-9]{2})\b/i);
     if (pm) {
@@ -524,13 +591,25 @@ if (label === 'dob:' && !procDOB) {
     if (payorMsg)     mk(`<strong>[${tab}] 🆔 Payor ID:</strong><br>${payorMsg}`,'#fff8db','#d4a000','#000');
     if (staleMsg)     mk(`<strong>[${tab}] ⏱️ Внимание:</strong><br>${staleMsg}`,'#ffe7ba','#e6a23c','#5a3d00');
 
+   // (Было: renderSection(winBody, tab, cards.map(c => (c.classList.add('piv-card'), c)));)
+
+    // --- ИСПРАВЛЕНИЕ 4B (v16): ОЧИСТКА СТАРЫХ СЕКЦИЙ ---
+    const agg = ensureAgg(winBody);
+    const oldSections = agg.querySelectorAll('div.piv-agg-section');
+    console.log(`--- PIV DEBUG: (scanActiveTab) Найдено ${oldSections.length} старых СЕКЦИЙ. Очищаем...`);
+    oldSections.forEach(section => section.remove());
+    // --- КОНЕЦ v16 ---
+
+    // 4. Теперь renderSection создаст ОДНУ НОВУЮ, чистую секцию
     renderSection(winBody, tab, cards.map(c => (c.classList.add('piv-card'), c)));
 
-    if (!winBody.__pivScanned) winBody.__pivScanned = {};
-    winBody.__pivScanned[tab] = true;
+    // --- ИСПРАВЛЕНИЕ 4B (v25): Сохраняем "сигнатуру" (текст) этой вкладки ---
+    const currentPanelForSig = getActivePanel(winBody); // v21
+    winBody.__pivLastScannedSig = norm(currentPanelForSig.textContent);
+    console.log(`--- PIV DEBUG: (v25) Сохранена сигнатура для ${tab}: ${winBody.__pivLastScannedSig.slice(0, 100)}...`);
+
   }
 
-  // ---------- robust tab detection ----------
   function scheduleScanAfterSwitch(winBody) {
     const tab = getActiveTabLabel(winBody);
     const lag = TAB_LAG[tab] || 300;
@@ -545,54 +624,92 @@ if (label === 'dob:' && !procDOB) {
     }, lag);
   }
 
+  // --- ИСПРАВЛЕНИЕ 5 (v17, v25): "Шпион" за вкладками ---
   function bindTabDetectors(winBody) {
+    // winBody корректен в момент инициализации
     if (winBody.dataset.pivTabsBound === '1') return;
     winBody.dataset.pivTabsBound = '1';
 
+    // xwin - это КОНКРЕТНОЕ окно, к которому привязан этот "шпион"
     const xwin = winBody.closest('.x-window');
     const strip = xwin?.querySelector('.x-tab-strip');
-    const bodiesWrap = xwin?.querySelector('.x-tab-panel-bwrap') || winBody;
+
+    // Это "главный" обработчик, который будет вызываться
+    const scanWhenReady = () => {
+
+      // (v17) Находим АКТУАЛЬНЫЙ winBody ВНУТРИ 'xwin'
+      const currentWinBody = xwin.querySelector('.x-window-body.piv-elig-win');
+
+      if (!currentWinBody) {
+         console.error(`--- PIV DEBUG: (v17) Не смог найти currentWinBody для ${xwin.id}! (Окно закрыто?)`);
+         return;
+      }
+
+      console.log(`--- PIV DEBUG: (v17) ЗАПУСК для ${xwin.id}. winBody:`, currentWinBody);
+
+      // (v25 ЛОГИКА) Получаем сигнатуру ПРЕДЫДУЩЕЙ вкладки
+      const prevSig = currentWinBody.__pivLastScannedSig || '';
+      const prevPanel = null;
+      console.log(`--- PIV DEBUG: (v25) prevSig (старый): ${prevSig.slice(0, 100)}...`);
+
+      // v20 ("Терпеливая")
+      waitForReadyChange(currentWinBody, prevPanel, prevSig, () => {
+         // v20 (waitForReadyChange) УЖЕ дождался стабилизации.
+         console.log('--- PIV DEBUG: (v25) Панель стабильна! Запуск сканирования...');
+         adjustRepeated(currentWinBody);
+         // Удалена функция waitStable (она лишняя) и scheduleScanAfterSwitch
+         scanActiveTab(currentWinBody, { force: false }); // force: false, т.к. v20 уже проверил
+         reorderAgg(ensureAgg(currentWinBody));
+      });
+    };
+
+    // --- Обработчики кликов и мутации, которые вызывают scanWhenReady ---
 
     if (strip) {
-      const onPointer = () => {
-        const prevPanel = getActivePanel(winBody);
-        const prevSig = norm(prevPanel.textContent);
-        waitForReadyChange(winBody, prevPanel, prevSig, () => scheduleScanAfterSwitch(winBody));
-      };
-      strip.addEventListener('click', onPointer, true);
-      strip.addEventListener('pointerup', onPointer, true);
-      strip.addEventListener('mouseup', onPointer, true);
+      strip.addEventListener('click', scanWhenReady, true);
+      strip.addEventListener('pointerup', scanWhenReady, true);
+      strip.addEventListener('mouseup', scanWhenReady, true);
     }
 
     if (strip) {
       const moTabs = new MutationObserver(() => {
-        const keyNow = getActiveTabLabel(winBody);
-        if (winBody.__pivLastTabKey !== keyNow) {
-          winBody.__pivLastTabKey = keyNow;
-          scheduleScanAfterSwitch(winBody);
+        const currentWinBody = xwin.querySelector('.x-window-body.piv-elig-win');
+        if (!currentWinBody) return;
+
+        const keyNow = getActiveTabLabel(currentWinBody); // v22
+
+        if (currentWinBody.__pivLastTabKey !== keyNow) {
+          console.log(`--- PIV DEBUG: (moTabs) v17. СМЕНА КНОПКИ ВКЛАДКИ! (Стало: ${keyNow})`);
+          currentWinBody.__pivLastTabKey = keyNow;
+          scanWhenReady();
         }
       });
       moTabs.observe(strip, { subtree: true, attributes: true, attributeFilter: ['class'] });
       winBody.__pivMoTabs = moTabs;
     }
 
-    if (bodiesWrap) {
-      const moBodies = new MutationObserver(recs => {
-        let need = false;
-        for (const r of recs) {
-          if (r.type === 'attributes' && r.target.classList && r.target.classList.contains('x-tab-panel-body')) {
-            if (r.attributeName === 'class') { need = true; break; }
+    const bodiesWrap_v17 = xwin?.querySelector('.x-tab-panel-bwrap');
+
+    if (bodiesWrap_v17) {
+       const moBodies = new MutationObserver(recs => {
+          let need = false;
+          for (const r of recs) {
+            if (r.type === 'attributes' && r.target.classList && r.target.classList.contains('x-tab-panel-body')) {
+              if (r.attributeName === 'class') { need = true; break; }
+            }
+            if (r.type === 'childList') { need = true; break; }
           }
-          if (r.type === 'childList') { need = true; break; }
-        }
-        if (need) scheduleScanAfterSwitch(winBody);
-      });
-      moBodies.observe(bodiesWrap, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
-      winBody.__pivMoBodies = moBodies;
+
+          if (need) {
+             console.log('--- PIV DEBUG: (moBodies) v17. ИЗМЕНЕНИЕ ПАНЕЛЕЙ КОНТЕНТА! ---');
+             scanWhenReady();
+          }
+       });
+       moBodies.observe(bodiesWrap_v17, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
+       winBody.__pivMoBodies = moBodies;
     }
   }
 
-  // ---------- init ----------
   function initWin(winBody) {
     if (winBody.dataset.pivInited === '1') return;
     winBody.dataset.pivInited = '1';
