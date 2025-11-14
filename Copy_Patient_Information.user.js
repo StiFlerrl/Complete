@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.13';
+    const SCRIPT_VERSION = '2.14';
     // ---
 
     // ====================================================================
