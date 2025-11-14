@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.13
+// @version      2.14
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -300,6 +300,11 @@
                 insurance: 'hf',
                 prohibitedStudies: ['Echocardiogram']
             },
+            {
+                facility: 'Wei Tan, MD',
+                insurance: 'hf',
+                prohibitedStudies: ['Echocardiogram']
+            },
         ],
         specificDoctorStudyRules: [
             {
@@ -368,6 +373,7 @@
             { facility: 'Dr. Yana Ryzhakova NP', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Juan Cortes, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Tamira Vannoy, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Wei Tan, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
         ]
     };
 
