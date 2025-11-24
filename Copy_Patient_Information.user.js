@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.14
+// @version      2.15
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.14';
+    const SCRIPT_VERSION = '2.15';
     // ---
 
     // ====================================================================
@@ -33,7 +33,7 @@
             'PEL TV': 'R10.20',
             'ABDO3cpt': 'R10.84',
             'Retroperetonial3': 'R10.84',
-            'PELV2': 'R10.20',
+            'PELV2': 'R10.20','Cigna_ABD':'R10.84'
         },
         defaultStudies: [
             'Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'SUDO3', 'VNG3', 'LEA', 'LEA2', 'ABI', 'LEV', 'UEA',
@@ -95,6 +95,9 @@
             'wellcare': {
                 'Retroperetonial2': 'Retro',
             },
+            'cigna': {
+                'ABD2': 'Cigna_ABD',
+            },
         },
         prohibitedStudies: {
             'metroplus': ['Echocardiogram'],
@@ -131,6 +134,7 @@
             'DZG': "ONLY WITH MEDICAL NOTES",
             'ADP': "Только с ноутсами в тот же день!",
             'D2W': "YES, IF PLAN HAS COVERAGE OUT OF STATE NJ",
+            'ETRBJ': "Авторизацию можно взять только день в день!",
         },
         facilityInsuranceProhibitions: {
             'ling lu': ['$medicare$'],
@@ -1267,11 +1271,19 @@ function validatePatientData(extractedData, checkDocuments = true) {
                     studyRuleDays = 90;
                 }
 
-                for (const historyEntry of historyData) {
+for (const historyEntry of historyData) {
 
-                    const insuranceMatch = historyEntry.insurances.some(histInsName =>
-                        checkInsuranceMatch(primaryInsuranceSubtype, histInsName)
-                    );
+                    // --- ИСПРАВЛЕНИЕ: Умное сравнение страховок (Алиасы) ---
+                    const insuranceMatch = historyEntry.insurances.some(histInsName => {
+                        // 1. Стандартная проверка
+                        if (checkInsuranceMatch(primaryInsuranceSubtype, histInsName)) return true;
+
+                        // 2. Спец. проверка: если одна HF, а другая HealthFirst -> это совпадение
+                        const isHF = (name) => name.includes('healthfirst') || name.includes('hf ') || name === 'hf';
+                        if (isHF(primaryInsuranceSubtype) && isHF(histInsName)) return true;
+
+                        return false;
+                    });
 
                     if (!insuranceMatch) {
                         continue;
