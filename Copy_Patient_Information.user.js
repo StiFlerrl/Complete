@@ -1421,7 +1421,7 @@ if (readingParts.length > 1) {
                                 }
                             } else {
                                 if (account !== validationRules.defaultReadingAccount) {
-                                    result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Study${i} ('${studyName}'): Нестандартный аккаунт Reading "${account}". Ожидался "${validationRules.defaultReadingAccount}".`);
+                                    result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Нестандартный аккаунт Reading "${account}". Ожидался "${validationRules.defaultReadingAccount}".`);
                                 }
                             }
                         }
