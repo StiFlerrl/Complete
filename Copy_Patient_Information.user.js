@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy 
 // @namespace    http://tampermonkey.net/
-// @version      2.15
+// @version      2.16
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.15';
+    const SCRIPT_VERSION = '2.16';
     // ---
 
     // ====================================================================
@@ -215,7 +215,7 @@
             { type: 'conflict', insurance: '$medicaid of new york$', studies: ['UEA', 'LEV'], message: "КОНФЛИКТ: Для Medicaid нельзя в один день делать UEA и LEV." },
             { type: 'conflict', insurance: 'uhc', studies: ['LEV', 'LEA'], message: "КОНФЛИКТ: Для UHC нельзя в один день делать LEV и LEA." },
             { type: 'conflict', insurance: '$essential plan$', studies: ['LEV', 'LEA'], message: "КОНФЛИКТ: Для UHC Essential нельзя в один день делать LEV и LEA." },
-            { type: 'conflict', insurance: ['aetna', '$fidelis$', 'humana', '$bcbs medicaid$','$empire etrbj$' , 'molina', 'wellcare', 'hf', 'uhc', 'essential plan','$emblemhealth$'], studies: [['ABD2','ABDO3','Ab2','Abdominal'], 'Renal Doppler'], message: "КОНФЛИКТ: Для этой страховки нельзя в один день делать ABD и Renal Doppler." },
+            { type: 'conflict', insurance: ['aetna', '$fidelis$', 'humana', '$empire jlj$','$empire etrbj$' , 'molina', 'wellcare', 'hf', 'uhc', 'essential plan','$emblemhealth$'], studies: [['ABD2','ABDO3','Ab2','Abdominal'], 'Renal Doppler'], message: "КОНФЛИКТ: Для этой страховки нельзя в один день делать ABD и Renal Doppler." },
             { type: 'conflict', insurance: 'aetna', studies: ['ABI', ['Echocardiogram','Carotid','Abdominal Aorta2','LEA','LEV']], message: "КОНФЛИКТ: Для AETNA нельзя в один день делать эти исследования и ABI." },
             { type: 'conflict', studies: [['ABD2','ABDO3','Ab2','Abdominal'],['PELV2','PEL2']], message: "КОНФЛИКТ: Тесты ABD и PEL не могут быть вместе." },
             { type: 'conflict',studies: [["Carotid"],["UEA"]],"message":"КОНФЛИКТ: Тесты Carotid и UEA не могут быть вместе."},
@@ -313,7 +313,7 @@
         specificDoctorStudyRules: [
             {
                 doctor: 'Mittal, H.K.',
-                insurance: 'bcbs medicaid',
+                insurance: '$empire jlj$',
                 allowedStudies: ['Echocardiogram'] // Разрешены ТОЛЬКО эти тесты
             }
         ],
@@ -338,7 +338,7 @@
             '$1199$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             'molina': ['Mittal, H.K.', 'Zakheim, A.R.'],
             'aetna': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
-            '$bcbs medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
+            '$empire jlj$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$bcbs somos$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$empire y8e$': ['Complete PC'],
             '$empire vof$': ['Mittal, H.K.', 'Hikin, D.', 'Complete PC'],
@@ -459,6 +459,9 @@ function copyToClipboard(text) {
             }
             if (id.startsWith('ETRBJ')) {
                 return 'empire etrbj';
+            }
+            if (id.startsWith('JLJ')) {
+                return 'empire jlj';
             }
         }
         return name;
@@ -1411,16 +1414,14 @@ for (const historyEntry of historyData) {
 
                     if (!specificDoctorRuleTriggered) {
 
-                        if (readingParts.length > 1) {
+if (readingParts.length > 1) {
                             if (readingRule) {
                                 if (account !== readingRule.account) {
                                     result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Для страховки "${primaryInsuranceSubtype}" аккаунт Reading должен быть "${readingRule.account}", а не "${account}".`);
                                 }
                             } else {
                                 if (account !== validationRules.defaultReadingAccount) {
-                                    if (account !== 'SF HF') {
-                                        result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Study${i} ('${studyName}'): Нестандартный аккаунт Reading "${account}". Ожидался "${validationRules.defaultReadingAccount}".`);
-                                    }
+                                    result.warnings.push(`ПРЕДУПРЕЖДЕНИЕ: Study${i} ('${studyName}'): Нестандартный аккаунт Reading "${account}". Ожидался "${validationRules.defaultReadingAccount}".`);
                                 }
                             }
                         }
