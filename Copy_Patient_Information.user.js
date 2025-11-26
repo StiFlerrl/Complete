@@ -214,7 +214,6 @@
             { type: 'conflict', insurance: '$emblemhealth$', studies: ['Carotid', ['ABD2','ABDO3','Ab2','Abdominal']], message: "КОНФЛИКТ: Для HIP нельзя в один день делать ABD и CAR." },
             { type: 'conflict', insurance: '$medicaid of new york$', studies: ['UEA', 'LEV'], message: "КОНФЛИКТ: Для Medicaid нельзя в один день делать UEA и LEV." },
             { type: 'conflict', insurance: 'uhc', studies: ['LEV', 'LEA'], message: "КОНФЛИКТ: Для UHC нельзя в один день делать LEV и LEA." },
-            { type: 'conflict', insurance: '$essential plan$', studies: ['LEV', 'LEA'], message: "КОНФЛИКТ: Для UHC Essential нельзя в один день делать LEV и LEA." },
             { type: 'conflict', insurance: ['aetna', '$fidelis$', 'humana', '$empire jlj$','$empire etrbj$' , 'molina', 'wellcare', 'hf', 'uhc', 'essential plan','$emblemhealth$'], studies: [['ABD2','ABDO3','Ab2','Abdominal'], 'Renal Doppler'], message: "КОНФЛИКТ: Для этой страховки нельзя в один день делать ABD и Renal Doppler." },
             { type: 'conflict', insurance: 'aetna', studies: ['ABI', ['Echocardiogram','Carotid','Abdominal Aorta2','LEA','LEV']], message: "КОНФЛИКТ: Для AETNA нельзя в один день делать эти исследования и ABI." },
             { type: 'conflict', studies: [['ABD2','ABDO3','Ab2','Abdominal'],['PELV2','PEL2']], message: "КОНФЛИКТ: Тесты ABD и PEL не могут быть вместе." },
