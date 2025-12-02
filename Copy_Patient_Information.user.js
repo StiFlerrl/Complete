@@ -221,6 +221,7 @@
             { type: 'conflict',studies: [["Carotid"],["UEA"]],"message":"КОНФЛИКТ: Тесты Carotid и UEA не могут быть вместе."},
             { type: 'conflict',studies: [["Carotid"],["Soft tissue"]],"message":"КОНФЛИКТ: Тесты Carotid и Soft tissue не могут быть вместе."},
             { type: 'conflict',studies: [["Carotid"],["Thyroid"]],"message":"КОНФЛИКТ: Тесты Carotid и THY не могут быть вместе."},
+            { type: 'conflict',studies: [["Soft tissue"],["Thyroid"]],"message":"КОНФЛИКТ: Тесты Soft Tissue и THY не могут быть вместе."},
             { type: 'conflict',studies: [["LEA"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты LEA и AORTA не могут быть вместе."},
             { type: 'conflict',studies: [["UEA"],["Soft tissue"]],"message":"КОНФЛИКТ: Тесты UEA и Soft tissue не могут быть вместе."},
             { type: 'conflict',studies: [["UEA"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты UEA и AORTA не могут быть вместе."},
