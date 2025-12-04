@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.17
+// @version      2.18
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.17';
+    const SCRIPT_VERSION = '2.18';
     // ---
 
     // ====================================================================
@@ -347,6 +347,7 @@
             'molina': ['Mittal, H.K.', 'Zakheim, A.R.'],
             'aetna': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$empire jlj$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
+            '$bcbs medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$bcbs somos$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$empire y8e$': ['Complete PC'],
             '$empire vof$': ['Mittal, H.K.', 'Hikin, D.', 'Complete PC'],
@@ -458,6 +459,7 @@
             if (id.startsWith('D2W')) return 'empire d2W';
             if (id.startsWith('ADP')) return 'empire adp';
             if (id.startsWith('ETRBJ')) return 'empire etrbj';
+        } else if (name.includes('bcbs')) {
             if (id.startsWith('JLJ')) return 'empire jlj';
         }
         return name;
