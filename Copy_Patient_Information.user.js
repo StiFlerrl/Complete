@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.18
+// @version      2.19
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.18';
+    const SCRIPT_VERSION = '2.19';
     // ---
 
     // ====================================================================
@@ -374,7 +374,9 @@
         },
 
         specificReadingRules: [
-            { insurance: 'healthfirst', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
+            { insurance: '$hf medicare$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
+            { insurance: '$hf medicaid$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
+            { insurance: '$hf essential$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
             { facility: 'Ling Lu MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Jose Aristy, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Jin Song, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
@@ -1064,7 +1066,7 @@
                 const studyMatch = !rule.study || (Array.isArray(rule.study) ? rule.study.map(s => s.toUpperCase()).includes(expectedStudyName.toUpperCase()) : expectedStudyName.toUpperCase() === rule.study.toUpperCase());
                 if (insuranceMatch && studyMatch && facilityMatch) {
                     if (reading !== rule.requiredReading) {
-                        result.errors.push(`ОШИБКА: Study${i}: Для "${extractedData['Referring facility']}" Reading должен быть "${rule.requiredReading}".`);
+                        result.errors.push(`ОШИБКА: Study${i}: Reading должен быть "${rule.requiredReading}".`);
                     }
                     specificRuleApplied = true;
                 }
