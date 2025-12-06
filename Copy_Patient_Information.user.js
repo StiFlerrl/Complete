@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.20
+// @version      2.21
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.20';
+    const SCRIPT_VERSION = '2.21';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -120,8 +120,9 @@
             'bcbs': ['SUDO3'],
             'fidelis': ['VNG3'],
             'ghi': ['SUDO3'],
-            '$emblemhealth$': ['Echocardiogram'],
-            '$hcp ipa$': ['Echocardiogram'],
+            'hip': ['Echocardiogram'],
+            'hcp ipa': ['Echocardiogram'],
+            'emblemhealth': ['Echocardiogram'],
             '$hf medicare$': ['SUDO3'],
             '$hf essential$': ['Echocardiogram', 'SUDO3'],
             '$hf medicaid$': ['Echocardiogram', 'SUDO3'],
@@ -368,8 +369,9 @@
             '$hf medicare$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$hf medicaid$': ['Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$humana$': ['Mittal, H.K.', 'Zakheim, A.R.'],
-            '$hcp ipa$': ['Mittal, H.K.', 'Hikin, D.'],
-            '$emblemhealth$': ['Hikin, D.'],
+            '$emblemhealth$': ['Hikin, D.'], //HIP Somos
+            'hip': ['Hikin, D.'],
+            '$hcp ipa$': ['Hikin, D.'], // HealthCare Partners
             '$ghi$': ['Mittal, H.K.', 'Hikin, D.', 'Complete PC'],
             '$medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$medicare$': ['Mittal, H.K.', 'Hikin, D.'],
