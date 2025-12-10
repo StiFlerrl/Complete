@@ -395,11 +395,21 @@
             { facility: 'Jun Kang, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Rui Er Teng MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Hong Ye, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Gregory Rivera, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Wei Tan, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},            
+            { facility: 'Gregory Rivera, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'}, // клиенты
             { facility: 'Dr. Yana Ryzhakova NP', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Juan Cortes, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Tamira Vannoy, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Wei Tan, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Ramsey H Joudeh', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Dr. Mahshid Assadi', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Kerah Williams, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Lima Jorge', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Maximo B Julian Sr MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Nick Nicoloff, PA', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Dr. Olugbenga Dawodu', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Ramy George Geris Massoud, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Roman Rolando R MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Vine Mark H', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
         ]
     };
 
@@ -1071,14 +1081,16 @@ if (expectedDiagnos !== undefined && !compareDiagnoses(actualDiagnos, expectedDi
                     }
                 }
 
-                for (const historyEntry of historyData) {
-                    const insuranceMatch = historyEntry.insurances.some(histInsName => {
-                        if (checkInsuranceMatch(primaryInsuranceSubtype, histInsName)) return true;
-                        const isHF = (name) => name.includes('healthfirst') || name.includes('hf ') || name === 'hf';
-                        if (isHF(primaryInsuranceSubtype) && isHF(histInsName)) return true;
-                        return false;
-                    });
-                    if (!insuranceMatch) continue;
+for (const historyEntry of historyData) {
+                    const historicalPrimaryIns = historyEntry.insurances[0];
+                    if (!historicalPrimaryIns) continue;
+
+                    const nameMatch = checkInsuranceMatch(primaryInsuranceSubtype, historicalPrimaryIns);
+
+                    const isHF = (name) => name.includes('healthfirst') || name.includes('hf ');
+                    const hfGroupMatch = isHF(primaryInsuranceSubtype) && isHF(historicalPrimaryIns);
+
+                    if (!nameMatch && !hfGroupMatch) continue;
 
                     const studyMatch = historyEntry.studies.find(histStudy => histStudy.replace(/\d/g, '').trim() === expectedStudyName.replace(/\d/g, '').trim());
                     if (studyMatch) {
