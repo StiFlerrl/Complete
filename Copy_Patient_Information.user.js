@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.21.1
+// @version      2.21.2
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.21.1';
+    const SCRIPT_VERSION = '2.21.2';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -404,7 +404,7 @@
             { facility: 'Kerah Williams, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Lima Jorge', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Maximo B Julian Sr MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Nick Nicoloff, PA', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Nick Nicoloff,  PA', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Dr. Olugbenga Dawodu', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Ramy George Geris Massoud, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Roman Rolando R MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
