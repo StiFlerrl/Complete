@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.21.2
+// @version      2.21.5
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.21.2';
+    const SCRIPT_VERSION = '2.21.5';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -20,9 +20,9 @@
     const validationRules = {
         masterStudyList: {
             'Echocardiogram': 'R07.89', 'Carotid': ['R42', 'R09.89', 'I67.848'], 'Abdominal Aorta2': 'R10.84',
-            'SUDO3': ['R55', 'G90.09', 'I73.89'], 'VNG3': ['G60.3', 'G90.09'], 'LEA': 'I73.89', 'LEA2': 'I73.89',
+            'SUDO3': ['R55', 'G90.09', 'I73.89'], 'SUDO': ['R55', 'G90.09'], 'VNG3': ['G60.3', 'G90.09'], 'LEA': 'I73.89', 'LEA2': 'I73.89',
             'ABI': 'I73.89', 'LEV': 'M79.89', 'UEA': 'I70.228', 'Renal Doppler': 'R10.84', 'Retroperetonial2': 'R10.84',
-            'Retro': 'R10.84', 'Renal': 'R10.84', 'ABD2': 'R10.84', 'Abdominal': 'R10.32', 'ABDO3': 'R10.84',
+            'Retro': 'R10.84', 'Renal': 'R10.84', 'ABD2': 'R10.84', 'Abdominal': 'R10.84', 'ABDO3': 'R10.84',
             'PEL2': 'R10.20', 'Pelvic TV2': 'R10.20', 'Scrotal': 'R10.20', 'Thyroid': 'E07.89', 'Soft tissue': 'R22.1',
             'Ab2': 'R10.84',
             'PELV3': 'R10.20',
@@ -32,13 +32,13 @@
             'PELV2': 'R10.20','Cigna_ABD':'R10.84'
         },
         defaultStudies: [
-            'Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'SUDO3', 'VNG3', 'LEA', 'LEA2', 'ABI', 'LEV', 'UEA',
-            'Renal Doppler', 'Retroperetonial2', 'Renal', 'ABD2', 'ABDO3',
+            'Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'SUDO3','SUDO', 'VNG3', 'LEA', 'LEA2', 'ABI', 'LEV', 'UEA',
+            'Renal Doppler', 'Retroperetonial2', 'Renal', 'ABD2',
             'PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid', 'Soft tissue'
         ],
         conditionallyValidStudies: [
-            'Abdominal',
             'Ab2',
+            'Abdominal',
             'Retro',
             'PELV3',
             'PEL TV',
@@ -111,24 +111,24 @@
         prohibitedStudies: {
             'metroplus': ['Echocardiogram'],
             'cigna': ['PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid'],
-            '$empire y7n$': ['Echocardiogram','SUDO3'],
-            '$empire vof$': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','SUDO3'],
-            '$empire jwx$': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','SUDO3'],
+            '$empire y7n$': ['Echocardiogram','SUDO3','SUDO'],
+            '$empire vof$': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','SUDO3','SUDO'],
+            '$empire jwx$': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','SUDO3','SUDO'],
             '$empire y8e$': ['Echocardiogram', 'VNG3','SUDO3'],
-            '$bcbs somos$': ['Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'LEA', 'UEA', 'ABI','SUDO3'],
-            'empire': ['SUDO3'],
-            'bcbs': ['SUDO3'],
+            '$bcbs somos$': ['Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'LEA', 'UEA', 'ABI','SUDO3','SUDO'],
+            'empire': ['SUDO3','SUDO'],
+            'bcbs': ['SUDO3','SUDO'],
             'fidelis': ['VNG3'],
-            'ghi': ['SUDO3'],
+            'ghi': ['SUDO3','SUDO'],
             'hip': ['Echocardiogram'],
             'hcp ipa': ['Echocardiogram'],
             'emblemhealth': ['Echocardiogram'],
-            '$hf medicare$': ['SUDO3'],
-            '$hf essential$': ['Echocardiogram', 'SUDO3'],
-            '$hf medicaid$': ['Echocardiogram', 'SUDO3'],
+            '$hf medicare$': ['SUDO3','SUDO'],
+            '$hf essential$': ['Echocardiogram', 'SUDO3','SUDO'],
+            '$hf medicaid$': ['Echocardiogram', 'SUDO3','SUDO'],
             '$centers plan for healthy living$': ['Echocardiogram'],
             'oxford': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','Retroperetonial2','SUDO3'],
-            'centerlight': ['Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'SUDO3', 'VNG3', 'LEA', 'LEA2', 'ABI', 'LEV', 'UEA','Renal Doppler', 'Retroperetonial2', 'Renal', 'ABD2', 'ABDO3','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid', 'Soft tissue'],
+            'centerlight': ['Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'SUDO3', 'SUDO', 'VNG3', 'LEA', 'LEA2', 'ABI', 'LEV', 'UEA','Renal Doppler', 'Retroperetonial2', 'Renal', 'ABD2', 'ABDO3','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid', 'Soft tissue'],
             'wellcare': ['Echocardiogram'],
         },
         insuranceWarnings: {
@@ -195,29 +195,24 @@
                 type: 'replacement',
                 insurance: '$medicare$',
                 ifStudyExists: 'Renal Doppler',
-                studyToReplace: ['ABD2', 'ABDO3'],
-                newStudyName: 'Ab2'
+                studyToReplace: ['ABDO3'],
+                newStudyName: 'Ab2',
+                newDiagnosisCode: ['R10.32'],
             },
             {
                 type: 'replacement',
                 insurance: 'metroplus',
                 ifStudyExists: 'Renal Doppler',
-                studyToReplace: ['ABD2', 'ABDO3'],
-                newStudyName: 'Ab2'
+                studyToReplace: ['ABDO3cpt'],
+                newStudyName: 'Ab2',
+                newDiagnosisCode: ['R10.32']
             },
-            {
+            {
                 type: 'replacement',
-                excludeInsurance: '$medicare$',
                 ifStudyExists: 'Renal Doppler',
-                studyToReplace: 'ABD2',
-                newStudyName: 'Abdominal'
-            },
-            {
-                type: 'replacement',
-                excludeInsurance: 'metroplus',
-                ifStudyExists: 'Renal Doppler',
-                studyToReplace: 'ABD2',
-                newStudyName: 'Abdominal'
+                studyToReplace: ['ABD2'],
+                newStudyName: 'Abdominal',
+                newDiagnosisCode: ['R10.32']
             },
             { type: 'conflict', insurance: 'ghi', studies: ['ABD2', 'Renal Doppler'], message: "КОНФЛИКТ: Для GHI нельзя в один день делать ABD2 и Renal Doppler." },
             { type: 'conflict', insurance: '$medicaid of new york$', studies: ['Carotid', 'LEV'], message: "КОНФЛИКТ: Для Medicaid нельзя в один день делать CAR и LEV." },
@@ -240,6 +235,7 @@
             { type: 'conflict',studies: [["Soft tissue"],["ABI"]],"message":"КОНФЛИКТ: Тесты Soft tissue и ABI не могут быть вместе."},
             { type: 'conflict',studies: [["Soft tissue"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты Soft tissue и AORTA не могут быть вместе."},
             { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и Renal Bladder не могут быть вместе."},
+            { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и AORTA не могут быть вместе."},
             { type: 'conflict',studies: [["Renal Doppler"],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и REN BLADDER не могут быть вместе."},
             { type: 'conflict',studies: [["Renal Doppler"],['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и PELV не могут быть вместе."},
             { type: 'conflict',studies: [["Renal Doppler"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты REN DOPPLER и AORTA не могут быть вместе."},
@@ -380,7 +376,7 @@
             '$villagecare max$': ['Mittal, H.K.', 'Hikin, D.'],
             '$vns$': ['Zakheim, A.R.'],
             'uhc': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
-            'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
+            'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.', 'Complete PC'],
         },
 
         specificReadingRules: [
@@ -996,7 +992,35 @@
                         });
                         if (!isConditionallyValid) {
                              specificErrorAdded = true;
-                             result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Условия замены не выполнены.`);
+                             // Берём только правила, подходящие под страховку/пол (триггеры могут быть не выполнены — это и есть причина ошибки)
+const candidateRules = matchingRepRules.filter(rule => {
+  const genderOk = !rule.gender || patientGender === rule.gender.toLowerCase();
+  if (!genderOk) return false;
+
+  let insOk = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
+  if (rule.excludeInsurance && checkInsuranceMatch(rule.excludeInsurance, primaryInsuranceSubtype)) insOk = false;
+  return insOk;
+});
+
+// Сопоставление overrides в UPPER, чтобы не зависеть от регистра
+const activeOverridesUPPER = {};
+for (const k in activeOverrides) activeOverridesUPPER[k.toUpperCase()] = activeOverrides[k];
+
+// Исходные тесты из правил + нормализация через insuranceOverrides
+const expectedFrom = [...new Set(
+  candidateRules.flatMap(r => (Array.isArray(r.studyToReplace) ? r.studyToReplace : [r.studyToReplace]))
+    .filter(Boolean)
+    .map(s => activeOverridesUPPER[s.toUpperCase()] || s)   // <-- ВОТ ЗДЕСЬ учитываем страховку
+)];
+
+const expectedFromText = expectedFrom.length ? expectedFrom.join(' или ') : 'N/A';
+
+result.errors.push(
+  `ОШИБКА: Study${i} ('${studyName}'): Условия замены не выполнены. ` +
+  `Ожидался исходный тест: ${expectedFromText} (вместо "${studyName}").`
+);
+
+
                         }
                     }
                     const activeOverridesUPPER = {};
@@ -1014,7 +1038,7 @@
                 if (!isConditionallyValid && !conditionalReplacementApplied && !conflictFound && !specificErrorAdded) {
                      const expectedOverride = activeOverrides[studyName];
                      if (expectedOverride) result.errors.push(`Study${i}: Ожидался тест: ${expectedOverride}.`);
-                     else result.errors.push(`Study${i} ('${studyName}'): Недопустимый тест для страховки.`);
+                     else result.errors.push(`Study${i} ('${studyName}'): Нестандартный тест для страховки.`);
                 }
             }
             if (prohibitedStudies.includes(studyName)) {
@@ -1035,13 +1059,18 @@
 let properDiag = conditionalDiagOverride;
 
 if (!properDiag) {
-     const directDiagOverrideRule = validationRules.conditional.find(rule =>
-        rule.type === 'replacement' &&
-        rule.newDiagnosisCode &&
-        (rule.newStudyName === expectedStudyName) &&
-        checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype) &&
-        (!rule.gender || patientGender === rule.gender.toLowerCase())
-    );
+const directDiagOverrideRule = validationRules.conditional.find(rule => {
+  if (!(rule.type === 'replacement' && rule.newDiagnosisCode && rule.newStudyName === expectedStudyName)) return false;
+
+  let insuranceMatch = checkInsuranceMatch(rule.insurance, primaryInsuranceSubtype);
+  if (rule.excludeInsurance && checkInsuranceMatch(rule.excludeInsurance, primaryInsuranceSubtype)) insuranceMatch = false;
+  if (!insuranceMatch) return false;
+
+  if (rule.gender && patientGender !== rule.gender.toLowerCase()) return false;
+
+  return checkStudyConditions(rule.ifStudyExists, allPatientStudies);
+});
+
 
     if (directDiagOverrideRule) {
         properDiag = directDiagOverrideRule.newDiagnosisCode;
@@ -1269,6 +1298,34 @@ for (const historyEntry of historyData) {
 
     let observer;
 
+    let cachedExtGrid = null;
+
+function getExtGridFromMainGrid() {
+    if (cachedExtGrid && cachedExtGrid.getEl && cachedExtGrid.getEl().dom) return cachedExtGrid;
+    if (typeof Ext === 'undefined' || !Ext.ComponentMgr || !Ext.ComponentMgr.all) return null;
+
+    const mainGridEl = getMainGrid();
+    if (!mainGridEl) return null;
+
+    let found = null;
+    try {
+        Ext.ComponentMgr.all.each(function (cmp) {
+            if (found) return;
+            if (!cmp || !cmp.getEl || !cmp.getSelectionModel || !cmp.getView) return;
+
+            const el = cmp.getEl();
+            if (!el || !el.dom) return;
+
+            // GridPanel содержит наш DOM-элемент грида
+            if (el.dom.contains(mainGridEl)) found = cmp;
+        });
+    } catch (e) {}
+
+    cachedExtGrid = found;
+    return found;
+}
+
+
     function getMainGrid() {
         const header = Array.from(document.querySelectorAll('.x-grid3-hd-row'))
             .find(h => h.querySelector('[ext\\:qtip="Studies / Details"]'));
@@ -1466,6 +1523,7 @@ for (const historyEntry of historyData) {
         addButtonsToRows();
         addCheckOrderButton();
         addVersionDisplay();
+        addMagicButton();
     }
 
     observer = new MutationObserver((mutations) => {
@@ -1485,6 +1543,49 @@ for (const historyEntry of historyData) {
     //======================
     // Модуль автоасайнинга
     // =====================
+
+    let autoRowIndex = 0;
+
+function getPatientRows() {
+    const mainGrid = getMainGrid();
+    if (!mainGrid) return [];
+    return Array.from(mainGrid.querySelectorAll('.x-grid3-row'))
+        .filter(r => r.offsetParent !== null && r.querySelectorAll('td.x-grid3-cell').length > 5);
+}
+
+function selectRowByIndex(idx) {
+    const rows = getPatientRows();
+    if (idx < 0 || idx >= rows.length) return false;
+
+    const extGrid = getExtGridFromMainGrid();
+    if (extGrid) {
+        try {
+            extGrid.getSelectionModel().selectRow(idx, false);
+            extGrid.getView().focusRow(idx);
+            extGrid.getView().scrollRowIntoView(idx);
+            return true;
+        } catch (e) {}
+    }
+
+    const row = rows[idx];
+    const cell = row.querySelector('td.x-grid3-cell') || row;
+    row.scrollIntoView({ block: 'center' });
+    ['mousedown', 'mouseup', 'click'].forEach(ev =>
+        cell.dispatchEvent(new MouseEvent(ev, { bubbles: true }))
+    );
+    return true;
+}
+
+function clickRow(row) {
+    const rows = getPatientRows();
+    rows.forEach(r => r.classList.remove('x-grid3-row-selected', 'x-grid-row-selected'));
+
+    const clickTarget = row.querySelector('td.x-grid3-cell') || row;
+    row.scrollIntoView({ block: 'center' });
+    ['mousedown', 'mouseup', 'click'].forEach(e =>
+        clickTarget.dispatchEvent(new MouseEvent(e, { bubbles: true }))
+    );
+}
 
     let autoRunning = false;
     let autoTimer = null;
@@ -1675,13 +1776,18 @@ for (let i = 1; extractedData[`Study${i}`]; i++) {
 let properDiag = conditionalDiagOverride;
 
 if (!properDiag) {
-     const directDiagOverrideRule = validationRules.conditional.find(rule =>
-        rule.type === 'replacement' &&
-        rule.newDiagnosisCode &&
-        (rule.newStudyName === expectedStudyName) &&
-        checkInsuranceMatch(rule.insurance, primaryIns) &&
-        (!rule.gender || patientGender === rule.gender.toLowerCase())
-    );
+const directDiagOverrideRule = validationRules.conditional.find(rule => {
+  if (!(rule.type === 'replacement' && rule.newDiagnosisCode && rule.newStudyName === expectedStudyName)) return false;
+
+  let insuranceMatch = checkInsuranceMatch(rule.insurance, primaryIns);
+  if (rule.excludeInsurance && checkInsuranceMatch(rule.excludeInsurance, primaryIns)) insuranceMatch = false;
+  if (!insuranceMatch) return false;
+
+  if (rule.gender && patientGender !== rule.gender.toLowerCase()) return false;
+
+  return checkStudyConditions(rule.ifStudyExists, allPatientStudies);
+});
+
 
     if (directDiagOverrideRule) {
         properDiag = directDiagOverrideRule.newDiagnosisCode;
@@ -1828,19 +1934,44 @@ if (!properDiag) {
         nextAction();
     }
 
-    function findMainGridSelectedRow() {
-        try {
-            const allSelected = Array.from(document.querySelectorAll('.x-grid3-row-selected'));
-            const patientRow = allSelected.find(row => row.querySelectorAll('td.x-grid3-cell').length > 5);
-            return patientRow || null;
-        } catch (e) { return null; }
-    }
+function findMainGridSelectedRow() {
+    try {
+        const mainGrid = getMainGrid();
+        if (!mainGrid) return null;
 
-    function processCurrentPatient(callback) {
-        if (!autoRunning) return;
+        const candidates = Array.from(
+            mainGrid.querySelectorAll('.x-grid3-row-selected, .x-grid-row-selected, .x-grid3-row[aria-selected="true"]')
+        );
 
-        const row = findMainGridSelectedRow();
-        if (!row) return callback(false);
+        const patientRow = candidates.find(row =>
+            row.offsetParent !== null &&
+            row.querySelectorAll('td.x-grid3-cell').length > 5
+        );
+
+        return patientRow || null;
+    } catch (e) { return null; }
+}
+
+
+    function selectFirstPatientRow() {
+    const rows = Array.from(document.querySelectorAll('.x-grid3-row'))
+        .filter(r => r.querySelectorAll('td.x-grid3-cell').length > 5 && r.offsetParent !== null);
+
+    if (rows.length === 0) return null;
+
+    const firstRow = rows[0];
+    firstRow.scrollIntoView({ block: 'center' });
+    ['mousedown', 'mouseup', 'click'].forEach(e =>
+        firstRow.dispatchEvent(new MouseEvent(e, { bubbles: true }))
+    );
+    firstRow.classList.add('x-grid3-row-selected', 'x-grid-row-selected');
+    return firstRow;
+}
+
+
+function processCurrentPatient(row, callback) {
+    if (!autoRunning) return;
+    if (!row) return callback(false);
 
         const rowText = row.innerText || '';
         const matchedSkip = SKIP_KEYWORDS.find(k => rowText.includes(k));
@@ -1901,51 +2032,78 @@ if (!properDiag) {
             }, 1500);
         }, 500);
     }
+function moveToNextRow() {
+    const mainGrid = getMainGrid();
+    if (!mainGrid) return false;
 
-    function moveToNextRow() {
-        const rows = Array.from(document.querySelectorAll('.x-grid3-row'));
-        const currentIdx = rows.findIndex(r => r.classList.contains('x-grid3-row-selected'));
-        if (currentIdx === -1) return false;
-        for (let i = currentIdx + 1; i < rows.length; i++) {
-            const nextRow = rows[i];
-            if (nextRow.querySelectorAll('td.x-grid3-cell').length > 5) {
-                rows[currentIdx].classList.remove('x-grid3-row-selected', 'x-grid-row-selected');
-                nextRow.scrollIntoView({ block: 'center' });
-                ['mousedown', 'mouseup', 'click'].forEach(e => nextRow.dispatchEvent(new MouseEvent(e, { bubbles: true })));
-                nextRow.classList.add('x-grid3-row-selected', 'x-grid-row-selected');
-                return true;
-            }
-        }
-        return false;
-    }
+    const rows = Array.from(mainGrid.querySelectorAll('.x-grid3-row'))
+        .filter(r => r.offsetParent !== null && r.querySelectorAll('td.x-grid3-cell').length > 5);
 
-    function autoAssignLoop() {
-        if (!autoRunning) return;
-        processCurrentPatient((shouldContinue) => {
-            if (!autoRunning) return;
-            if (shouldContinue) {
-                const hasNext = moveToNextRow();
-                if (hasNext) {
-                    autoTimer = setTimeout(autoAssignLoop, 1500);
-                } else {
-                    stopAutoAssign();
-                }
-            } else {
-                stopAutoAssign();
-            }
-        });
-    }
+    const currentRow = findMainGridSelectedRow();
+    const currentIdx = currentRow ? rows.indexOf(currentRow) : -1;
+    if (currentIdx === -1) return false;
 
-    function startAutoAssign() {
-        if (autoRunning) return;
-        autoRunning = true;
-        const btn = document.getElementById('magic-btn');
-        if (btn) {
-            btn.textContent = '⏹️ Stop Magic';
-            btn.style.backgroundColor = '#dc3545';
-        }
-        autoAssignLoop();
-    }
+    const nextRow = rows[currentIdx + 1];
+    if (!nextRow) return false;
+
+    nextRow.scrollIntoView({ block: 'center' });
+
+    const clickTarget = nextRow.querySelector('td.x-grid3-cell') || nextRow;
+    ['mousedown', 'mouseup', 'click'].forEach(e =>
+        clickTarget.dispatchEvent(new MouseEvent(e, { bubbles: true }))
+    );
+
+    nextRow.classList.add('x-grid3-row-selected', 'x-grid-row-selected');
+
+    return true;
+}
+
+
+function autoAssignLoop() {
+    if (!autoRunning) return;
+
+    const rows = getPatientRows();
+    if (!rows.length) return stopAutoAssign();
+    if (autoRowIndex >= rows.length) return stopAutoAssign();
+
+    selectRowByIndex(autoRowIndex);
+
+    setTimeout(() => {
+        const freshRows = getPatientRows();
+        const row = freshRows[autoRowIndex];
+        processCurrentPatient(row, (shouldContinue) => {
+            if (!autoRunning) return;
+            if (shouldContinue) {
+                autoRowIndex++;
+                autoTimer = setTimeout(autoAssignLoop, 1200);
+            } else {
+                stopAutoAssign();
+            }
+        });
+    }, 350);
+}
+
+
+
+function startAutoAssign() {
+    if (autoRunning) return;
+    autoRunning = true;
+
+    const btn = document.getElementById('magic-btn');
+    if (btn) {
+        btn.textContent = '⏹️ Stop Magic';
+        btn.style.backgroundColor = '#dc3545';
+    }
+
+    const rows = getPatientRows();
+    const selectedIdx = rows.findIndex(r =>
+        r.classList.contains('x-grid3-row-selected') || r.classList.contains('x-grid-row-selected')
+    );
+    autoRowIndex = selectedIdx >= 0 ? selectedIdx : 0;
+
+    autoAssignLoop();
+}
+
 
     function stopAutoAssign() {
         autoRunning = false;
