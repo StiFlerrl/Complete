@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.21.5
+// @version      2.21.5.1
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.21.5';
+    const SCRIPT_VERSION = '2.21.5.1';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -218,7 +218,6 @@
             { type: 'conflict', insurance: '$medicaid of new york$', studies: ['Carotid', 'LEV'], message: "КОНФЛИКТ: Для Medicaid нельзя в один день делать CAR и LEV." },
             { type: 'conflict', insurance: '$medicaid of new york$', studies: ['LEV', 'LEA'], message: "КОНФЛИКТ: Для Medicaid нельзя в один день делать LEV и LEA." },
             { type: 'conflict', insurance: '$empire plan by uhc$', studies: ['LEV', 'LEA'], message: "КОНФЛИКТ: Для Empire Plan By UHC нельзя в один день делать LEV и LEA." },
-            { type: 'conflict', insurance: '$emblemhealth$', studies: ['Carotid', ['ABD2','ABDO3','Ab2','Abdominal']], message: "КОНФЛИКТ: Для HIP нельзя в один день делать ABD и CAR." },
             { type: 'conflict', insurance: '$medicaid of new york$', studies: ['UEA', 'LEV'], message: "КОНФЛИКТ: Для Medicaid нельзя в один день делать UEA и LEV." },
             { type: 'conflict', insurance: 'uhc', studies: ['LEV', 'LEA'], message: "КОНФЛИКТ: Для UHC нельзя в один день делать LEV и LEA." },
             { type: 'conflict', insurance: ['aetna', '$fidelis$', 'humana', '$bcbs medicaid$','$bcbs somos$','$empire etrbj$' , 'molina', 'wellcare', 'hf', 'uhc', 'essential plan','$emblemhealth$'], studies: [['ABD2','ABDO3','Ab2','Abdominal'], 'Renal Doppler'], message: "КОНФЛИКТ: Для этой страховки нельзя в один день делать ABD и Renal Doppler." },
