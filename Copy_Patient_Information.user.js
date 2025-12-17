@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.21.5.1
+// @version      2.21.6
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.21.5.1';
+    const SCRIPT_VERSION = '2.21.6';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -837,7 +837,20 @@
         const allPatientStudies = Object.keys(extractedData).filter(k => k.startsWith('Study')).map(k => extractedData[k]);
         let conflictFound = false;
 
-        function compareDiagnoses(actual, expected) {
+        function passesSpecificDoctorStudyRules(docName, insName, studyName) {
+  const rules = validationRules.specificDoctorStudyRules || [];
+  for (const rule of rules) {
+    const doctorMatch = (docName || '').includes(rule.doctor);
+    const insuranceMatch = checkInsuranceMatch(rule.insurance, insName);
+    if (doctorMatch && insuranceMatch) {
+      return rule.allowedStudies.some(s => (s || '').toUpperCase() === (studyName || '').toUpperCase());
+    }
+  }
+  return true;
+}
+
+
+        function compareDiagnoses(actual, expected) {
             const clean = (str) => (str || "").toUpperCase().trim();
             const actualArray = clean(actual).split(',').map(d => d.trim()).filter(Boolean).sort();
             const expectedArray = Array.isArray(expected) ? expected.map(clean).sort() : [clean(expected)];
@@ -991,7 +1004,6 @@
                         });
                         if (!isConditionallyValid) {
                              specificErrorAdded = true;
-                             // Берём только правила, подходящие под страховку/пол (триггеры могут быть не выполнены — это и есть причина ошибки)
 const candidateRules = matchingRepRules.filter(rule => {
   const genderOk = !rule.gender || patientGender === rule.gender.toLowerCase();
   if (!genderOk) return false;
@@ -1001,15 +1013,13 @@ const candidateRules = matchingRepRules.filter(rule => {
   return insOk;
 });
 
-// Сопоставление overrides в UPPER, чтобы не зависеть от регистра
 const activeOverridesUPPER = {};
 for (const k in activeOverrides) activeOverridesUPPER[k.toUpperCase()] = activeOverrides[k];
 
-// Исходные тесты из правил + нормализация через insuranceOverrides
 const expectedFrom = [...new Set(
   candidateRules.flatMap(r => (Array.isArray(r.studyToReplace) ? r.studyToReplace : [r.studyToReplace]))
     .filter(Boolean)
-    .map(s => activeOverridesUPPER[s.toUpperCase()] || s)   // <-- ВОТ ЗДЕСЬ учитываем страховку
+    .map(s => activeOverridesUPPER[s.toUpperCase()] || s)  
 )];
 
 const expectedFromText = expectedFrom.length ? expectedFrom.join(' или ') : 'N/A';
@@ -1182,6 +1192,10 @@ for (const historyEntry of historyData) {
                             return studyBaseName.includes(rule) || rule.includes(studyBaseName);
                         });
                     });
+
+                    expectedDoctors = expectedDoctors.filter(docName =>
+  passesSpecificDoctorStudyRules(docName, primaryInsuranceSubtype, expectedStudyName)
+);
 
                     let hint = `Ожидаемые врачи: ${expectedDoctors.join(', ')}`;
                     if (expectedDoctors.length === 0) hint = "Нет подходящих врачей (с учетом Primary и Secondary)!";
@@ -1699,15 +1713,31 @@ function clickRow(row) {
     }
 
     // Приоритетность врачей
-    function selectBestDoctor(allowedDocs, studyName) {
-        if (!allowedDocs || !Array.isArray(allowedDocs)) return null;
-        const validDocs = allowedDocs.filter(docName => {
-            const restrictions = validationRules.doctorRestrictions[docName];
-            if (!restrictions) return true;
-            return !restrictions.prohibits.some(p => {
-                const pClean = p.replace(/\$/g, '').toLowerCase();
-                const sClean = (studyName || '').toLowerCase();
-                return sClean.includes(pClean);
+    function passesSpecificDoctorStudyRules(docName, insName, studyName) {
+    const rules = validationRules.specificDoctorStudyRules || [];
+    for (const rule of rules) {
+        const doctorMatch = (docName || '').includes(rule.doctor);
+        const insuranceMatch = checkInsuranceMatch(rule.insurance, insName);
+        if (doctorMatch && insuranceMatch) {
+            return rule.allowedStudies.some(s => (s || '').toUpperCase() === (studyName || '').toUpperCase());
+        }
+    }
+    return true; // если спец-правила не матчятся — не ограничиваем
+}
+
+function selectBestDoctor(allowedDocs, studyName, insName) {
+    if (!allowedDocs || !Array.isArray(allowedDocs)) return null;
+
+    const validDocs = allowedDocs.filter(docName => {
+        if (!passesSpecificDoctorStudyRules(docName, insName, studyName)) return false;
+
+        const restrictions = validationRules.doctorRestrictions[docName];
+        if (!restrictions) return true;
+
+        return !restrictions.prohibits.some(p => {
+            const pClean = p.replace(/\$/g, '').toLowerCase();
+            const sClean = (studyName || '').toLowerCase();
+            return sClean.includes(pClean);
             });
         });
 
@@ -1836,7 +1866,7 @@ if (!properDiag) {
                 }
             }
 
-            const suitableDoc = selectBestDoctor(candidateDocs, expectedStudyName);
+                const suitableDoc = selectBestDoctor(candidateDocs, expectedStudyName, primaryIns);
 
             if (suitableDoc) {
                 let finalValue = '';
