@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.21.6
+// @version      2.21.7
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.21.6';
+    const SCRIPT_VERSION = '2.21.7';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -26,7 +26,8 @@
             'PEL2': 'R10.20', 'Pelvic TV2': 'R10.20', 'Scrotal': 'R10.20', 'Thyroid': 'E07.89', 'Soft tissue': 'R22.1',
             'Ab2': 'R10.84',
             'PELV3': 'R10.20',
-            'PEL TV': 'R10.20',
+            'Pel TV': 'R10.20',
+            'Pel TA.TV': 'R10.20',
             'ABDO3cpt': 'R10.84',
             'Retroperetonial3': 'R10.84',
             'PELV2': 'R10.20','Cigna_ABD':'R10.84'
@@ -41,7 +42,8 @@
             'Abdominal',
             'Retro',
             'PELV3',
-            'PEL TV',
+            'Pel TV',
+            'Pel TA.TV',
             'ABDO3cpt',
             'Retroperetonial3',
             'PELV2',
@@ -72,16 +74,16 @@
             },
             'hip': {
                 'Retroperetonial2': 'Retro',
-                'Pelvic TV2': 'PEL TV',
+                'Pelvic TV2': 'Pel TV',
             },
             '1199': {
                 'PEL2': 'PELV3',
-                'Pelvic TV2': 'PEL TV',
+                'Pelvic TV2': 'Pel TV',
             },
             'molina': { 'Retroperetonial2': 'Retro' },
             '$bcbs somos$': { 'ABD2': 'ABDO2' },
             '$fidelis$': {
-                'Pelvic TV2': 'PEL TV',
+                'Pelvic TV2': 'Pel TV',
                 'Retroperetonial2': 'Retro',
             },
             'hf': {'Renal':'Retro'},
@@ -89,17 +91,18 @@
             'metroplus': {
                 'ABD2': 'ABDO3cpt',
                 'PEL2': 'PELV2',
+                'Pelvic TV2': 'Pel TA.TV',
             },
             'vns':{
                 'PEL2': 'PELV2',
             },
             'uhc': {
                 'Retroperetonial2': 'Retroperetonial3',
-                'Pelvic TV2': 'PEL TV',
+                'Pelvic TV2': 'Pel TV',
             },
             '$essential plan$': {
                 'Retroperetonial2': 'Retroperetonial3',
-                'Pelvic TV2': 'PEL TV',
+                'Pelvic TV2': 'Pel TV',
             },
             'wellcare': {
                 'Retroperetonial2': 'Retro',
@@ -179,6 +182,14 @@
             {
                 type: 'replacement',
                 insurance: 'uhc',
+                gender: 'Female',
+                studyToReplace: 'PEL2',
+                newStudyName: 'PELV2',
+                newDiagnosisCode: ['R10.20', 'R10.84'],
+            },
+                        {
+                type: 'replacement',
+                insurance: 'essential plan',
                 gender: 'Female',
                 studyToReplace: 'PEL2',
                 newStudyName: 'PELV2',
@@ -390,6 +401,7 @@
             { facility: 'Rui Er Teng MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Hong Ye, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Wei Tan, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},            
+            { facility: 'Leonid Bukhman M.D', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Gregory Rivera, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'}, // клиенты
             { facility: 'Dr. Yana Ryzhakova NP', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Juan Cortes, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
@@ -404,6 +416,7 @@
             { facility: 'Ramy George Geris Massoud, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Roman Rolando R MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Vine Mark H', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+
         ]
     };
 
@@ -1311,14 +1324,20 @@ for (const historyEntry of historyData) {
 
     let observer;
 
-    let cachedExtGrid = null;
+let cachedExtGrid = null;
 
 function getExtGridFromMainGrid() {
-    if (cachedExtGrid && cachedExtGrid.getEl && cachedExtGrid.getEl().dom) return cachedExtGrid;
-    if (typeof Ext === 'undefined' || !Ext.ComponentMgr || !Ext.ComponentMgr.all) return null;
-
     const mainGridEl = getMainGrid();
     if (!mainGridEl) return null;
+
+    // ✅ кеш используем только если он реально содержит текущий mainGrid
+    if (cachedExtGrid && cachedExtGrid.getEl && cachedExtGrid.getEl().dom) {
+        const dom = cachedExtGrid.getEl().dom;
+        if (dom.contains(mainGridEl)) return cachedExtGrid;
+        cachedExtGrid = null; // грид пересоздался/перерисовался
+    }
+
+    if (typeof Ext === 'undefined' || !Ext.ComponentMgr || !Ext.ComponentMgr.all) return null;
 
     let found = null;
     try {
@@ -1329,7 +1348,6 @@ function getExtGridFromMainGrid() {
             const el = cmp.getEl();
             if (!el || !el.dom) return;
 
-            // GridPanel содержит наш DOM-элемент грида
             if (el.dom.contains(mainGridEl)) found = cmp;
         });
     } catch (e) {}
@@ -1337,6 +1355,9 @@ function getExtGridFromMainGrid() {
     cachedExtGrid = found;
     return found;
 }
+
+
+
 
 
     function getMainGrid() {
@@ -1565,6 +1586,30 @@ function getPatientRows() {
     return Array.from(mainGrid.querySelectorAll('.x-grid3-row'))
         .filter(r => r.offsetParent !== null && r.querySelectorAll('td.x-grid3-cell').length > 5);
 }
+    function getSelectedRowIndexSafe() {
+    const extGrid = getExtGridFromMainGrid();
+    if (extGrid && extGrid.store && extGrid.getSelectionModel) {
+        const sm = extGrid.getSelectionModel();
+        const rec = sm.getSelected ? sm.getSelected() : null;
+        if (rec) return extGrid.store.indexOf(rec);
+    }
+
+    // fallback по DOM
+    const rows = getPatientRows();
+    const sel = findMainGridSelectedRow();
+    return sel ? rows.indexOf(sel) : -1;
+}
+
+function waitForRowSelected(targetIdx, cb, tries = 25) {
+    if (!autoRunning) return;
+
+    const ok = getSelectedRowIndexSafe() === targetIdx;
+    if (ok) return cb(true);
+
+    if (tries <= 0) return cb(false);
+    setTimeout(() => waitForRowSelected(targetIdx, cb, tries - 1), 80);
+}
+
 
 function selectRowByIndex(idx) {
     const rows = getPatientRows();
@@ -1750,7 +1795,7 @@ function selectBestDoctor(allowedDocs, studyName, insName) {
         if (priorityDocs.length > 0) {
             const hikin = priorityDocs.find(d => d.includes('Hikin'));
             const complete = priorityDocs.find(d => d.includes('Complete PC'));
-            if (hikin && complete) return Math.random() < 0.8 ? hikin : complete;
+            if (hikin && complete) return Math.random() < 0.9? hikin : complete;
             return priorityDocs[0];
         }
         if (others.length > 0) return others[0];
@@ -1893,7 +1938,7 @@ if (!properDiag) {
         function nextAction() {
             if (!autoRunning) return;
             if (actionIndex >= actions.length) {
-                setTimeout(() => callback(), 1000);
+                setTimeout(() => callback(), 100);
                 return;
             }
             setTimeout(() => processNext(), 500);
@@ -1998,16 +2043,29 @@ function findMainGridSelectedRow() {
 }
 
 
-function processCurrentPatient(row, callback) {
+function processCurrentPatient(expectedIdx, callback) {
     if (!autoRunning) return;
-    if (!row) return callback(false);
 
-        const rowText = row.innerText || '';
-        const matchedSkip = SKIP_KEYWORDS.find(k => rowText.includes(k));
-        if (matchedSkip) {
-            console.log(`Skipping: ${matchedSkip}`);
-            return callback(true);
-        }
+    const selectedIdx = getSelectedRowIndexSafe();
+    const row = findMainGridSelectedRow();
+
+    if (!row || selectedIdx < 0) {
+        console.warn("❌ Make magic: не вижу выбранную строку пациента.");
+        return callback(false);
+    }
+
+    // ✅ если вдруг ожидали одну строку, а реально выбрана другая — СТОП на этом пациенте
+    if (typeof expectedIdx === 'number' && expectedIdx !== selectedIdx) {
+        console.warn(`⚠️ AutoAssign mismatch: expected idx=${expectedIdx}, but selected idx=${selectedIdx}. Пропускаю пациента, чтобы не смешать данные.`);
+        return callback(true);
+    }
+
+    const rowText = row.innerText || '';
+    const matchedSkip = SKIP_KEYWORDS.find(k => rowText.includes(k));
+    if (matchedSkip) {
+        console.log(`Skipping: ${matchedSkip}`);
+        return callback(true);
+    }
 
         const extractedData = extractPatientData(row);
         let missingDocs = false;
@@ -2097,20 +2155,29 @@ function autoAssignLoop() {
 
     selectRowByIndex(autoRowIndex);
 
-    setTimeout(() => {
-        const freshRows = getPatientRows();
-        const row = freshRows[autoRowIndex];
-        processCurrentPatient(row, (shouldContinue) => {
+    // ✅ ждём пока Ext/DOM реально выделит нужную строку
+    waitForRowSelected(autoRowIndex, (selectedOk) => {
+        if (!autoRunning) return;
+
+        if (!selectedOk) {
+            console.warn(`❌ AutoAssign: не смог подтвердить выбор строки idx=${autoRowIndex}. Пропускаю, чтобы не путать пациентов.`);
+            autoRowIndex++;
+            autoTimer = setTimeout(autoAssignLoop, 600);
+            return;
+        }
+
+        processCurrentPatient(autoRowIndex, (shouldContinue) => {
             if (!autoRunning) return;
             if (shouldContinue) {
                 autoRowIndex++;
-                autoTimer = setTimeout(autoAssignLoop, 1200);
+                autoTimer = setTimeout(autoAssignLoop, 1500);
             } else {
                 stopAutoAssign();
             }
         });
-    }, 350);
+    });
 }
+
 
 
 
