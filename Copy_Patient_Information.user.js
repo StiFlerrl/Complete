@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.3
+// @version      2.31
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.3';
+    const SCRIPT_VERSION = '2.31';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -382,7 +382,7 @@
             '$emblemhealth$': ['Hikin, D.'], //HIP Somos
             'hip': ['Hikin, D.'],
             '$hcp ipa$': ['Hikin, D.'], // HealthCare Partners
-            '$ghi$': ['Mittal, H.K.', 'Hikin, D.', 'Complete PC'],
+            '$ghi$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$medicare$': ['Mittal, H.K.', 'Hikin, D.'],
             'metroplus': ['Zakheim, A.R.'],
