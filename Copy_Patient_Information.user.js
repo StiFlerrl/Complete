@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.21.8
+// @version      2.3
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.21.8';
+    const SCRIPT_VERSION = '2.3';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -337,12 +337,17 @@
         specificDoctorStudyRules: [
             {
                 doctor: 'Mittal, H.K.',
-                insurance: '$BCBS Medicaid$',
+                insurance: '$bcbs medicaid$',
                 allowedStudies: ['Echocardiogram']
-            }
+            },
+                        {
+                doctor: 'Hikin, D.',
+                insurance: '$villagecare max$',
+                allowedStudies: ['ABD2', 'Ab2', 'Abdominal', 'PEL2', 'PELV2', 'PEL TV','Pelvic TV2','PELV3', 'Thyroid', 'Retroperetonial2','Retroperetonial3','Retro']
+            },
         ],
         doctorRestrictions: {
-            'Mittal, H.K.': { prohibits: ['$ABD2$', 'Ab2', '$Abdominal$', 'PEL2', 'PELV2', 'PEL TV','Pelvic TV2','PELV3', 'Thyroid', 'Retroperetonial2','Retroperetonial3','Retro'] },
+            'Mittal, H.K.': { prohibits: ['ABD2', 'Ab2', 'Abdominal', 'PEL2', 'PELV2', 'PEL TV','Pelvic TV2','PELV3', 'Thyroid', 'Retroperetonial2','Retroperetonial3','Retro'] },
             'Zakheim, A.R.': { prohibits: ['Echocardiogram'] },
             'Hikin, D.':     { prohibits: ['Echocardiogram', 'ABI', 'SUDO3', 'SUDO', 'VNG3'] },
             'Complete PC':   { prohibits: ['Echocardiogram', 'Thyroid', 'SUDO3', 'SUDO', 'ABI', 'VNG3'] }
@@ -404,6 +409,10 @@
             { facility: 'Leonid Bukhman M.D', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Yiding Li MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Steven Kong, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Dr. Guo, Xiaojun M.D.', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Jun Yang, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Lin Shen-han DO', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
+            { facility: 'Baoen Jiang, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Gregory Rivera, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'}, // клиенты
             { facility: 'Dr. Yana Ryzhakova NP', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Juan Cortes, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
@@ -1581,6 +1590,24 @@ function getExtGridFromMainGrid() {
     // =====================
 
     let autoRowIndex = 0;
+    let lastProcessedKey = null;
+
+function getRowKey(row) {
+  if (!row) return null;
+  const icon = row.querySelector('img[lazyqtipapi*="fetchRepeatedStudiesHistory"]');
+  const url = icon?.getAttribute('lazyqtipapi');
+  if (url) return url; // ✅ самый стабильный ключ
+  // fallback если вдруг нет history:
+  const name = row.querySelector('.x-grid3-td-3 .text-bold span')?.textContent?.trim() || '';
+  const dos  = row.querySelector('.x-grid3-td-2 .x-grid3-cell-inner')?.textContent?.trim() || '';
+  return `${dos}|${name}`;
+}
+
+function findRowIndexByKey(key) {
+  if (!key) return -1;
+  const rows = getPatientRows();
+  return rows.findIndex(r => getRowKey(r) === key);
+}
 
 function getPatientRows() {
     const mainGrid = getMainGrid();
@@ -2044,12 +2071,58 @@ function findMainGridSelectedRow() {
     return firstRow;
 }
 
+    function clickNoOkIfAny() {
+  const footerBtns = Array.from(document.querySelectorAll('.x-window-footer button'));
+  const noBtn = footerBtns.find(b => b.textContent.trim() === 'No');
+  if (noBtn) noBtn.click();
+
+  const okBtn = footerBtns.find(b => b.textContent.trim() === 'OK');
+  if (okBtn) okBtn.click();
+}
+
+// “Окно редактирования Service” у тебя детектится по наличию строк внутри мультифилда
+function isServiceEditOpen() {
+  return !!document.querySelector('.app-multifield-row');
+}
+
+// иногда Ext рисует маски/лоадеры — попробуем их учитывать как “busy”
+function isUiBusy() {
+  return !!document.querySelector(
+    '.x-mask, .x-mask-loading, .x-mask-msg, .x-loading, .loading-mask, .x-window-dlg'
+  );
+}
+
+function waitForServiceEditToClose(done, timeoutMs = 30000) {
+  const start = Date.now();
+
+  (function tick() {
+    if (!autoRunning) return;
+
+    // постоянно “подчищаем” диалоги (Insurance / OK / No)
+    clickNoOkIfAny();
+
+    const open = isServiceEditOpen();
+    const busy = isUiBusy();
+    const insuranceDlg = !!document.querySelector('.app-details-dlg');
+
+    if (!open && !busy && !insuranceDlg) return done(true);
+
+    if (Date.now() - start > timeoutMs) {
+      console.warn('⚠️ waitForServiceEditToClose: timeout, продолжаю чтобы не зависнуть.');
+      return done(false);
+    }
+
+    setTimeout(tick, 250);
+  })();
+}
+
 
 function processCurrentPatient(expectedIdx, callback) {
     if (!autoRunning) return;
 
     const selectedIdx = getSelectedRowIndexSafe();
     const row = findMainGridSelectedRow();
+    lastProcessedKey = getRowKey(row);
 
     if (!row || selectedIdx < 0) {
         console.warn("❌ Make magic: не вижу выбранную строку пациента.");
@@ -2103,49 +2176,36 @@ function processCurrentPatient(expectedIdx, callback) {
                     performActionsInModal(actions, finishSave);
                 }
 
-                function finishSave() {
-                    setTimeout(() => {
-                        if (!autoRunning) return;
-                        const saveBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Save');
-                        if (saveBtn) saveBtn.click();
+function finishSave() {
+  if (!autoRunning) return;
 
-                        setTimeout(() => {
-                            const noBtn = Array.from(document.querySelectorAll('.x-window-footer button')).find(b => b.textContent.trim() === 'No');
-                            if(noBtn) noBtn.click();
-                            const okBtn = Array.from(document.querySelectorAll('.x-window-footer button')).find(b => b.textContent.trim() === 'OK');
-                            if(okBtn) okBtn.click();
-                            setTimeout(() => callback(true), 2500);
-                        }, 2000);
-                    }, 1000);
-                }
+  const saveBtn = Array.from(document.querySelectorAll('button'))
+    .find(b => b.textContent.trim() === 'Save');
+
+  if (saveBtn) saveBtn.click();
+
+  // ✅ ждём реальное закрытие окна, а не “2 секунды наугад”
+  waitForServiceEditToClose(() => callback(true), 35000);
+}
+
             }, 1500);
         }, 500);
     }
 function moveToNextRow() {
-    const mainGrid = getMainGrid();
-    if (!mainGrid) return false;
+  const rows = getPatientRows();
+  if (!rows.length) return false;
 
-    const rows = Array.from(mainGrid.querySelectorAll('.x-grid3-row'))
-        .filter(r => r.offsetParent !== null && r.querySelectorAll('td.x-grid3-cell').length > 5);
+  const currentRow = findMainGridSelectedRow();
+  const currentIdx = currentRow ? rows.indexOf(currentRow) : -1;
+  if (currentIdx === -1) return false;
 
-    const currentRow = findMainGridSelectedRow();
-    const currentIdx = currentRow ? rows.indexOf(currentRow) : -1;
-    if (currentIdx === -1) return false;
+  const nextRow = rows[currentIdx + 1];
+  if (!nextRow) return false;
 
-    const nextRow = rows[currentIdx + 1];
-    if (!nextRow) return false;
-
-    nextRow.scrollIntoView({ block: 'center' });
-
-    const clickTarget = nextRow.querySelector('td.x-grid3-cell') || nextRow;
-    ['mousedown', 'mouseup', 'click'].forEach(e =>
-        clickTarget.dispatchEvent(new MouseEvent(e, { bubbles: true }))
-    );
-
-    nextRow.classList.add('x-grid3-row-selected', 'x-grid-row-selected');
-
-    return true;
+  clickRow(nextRow); // ✅ снимает старое выделение и кликает по новой строке
+  return true;
 }
+
 
 
 function autoAssignLoop() {
@@ -2169,14 +2229,33 @@ function autoAssignLoop() {
         }
 
         processCurrentPatient(autoRowIndex, (shouldContinue) => {
-            if (!autoRunning) return;
-            if (shouldContinue) {
-                autoRowIndex++;
-                autoTimer = setTimeout(autoAssignLoop, 1500);
-            } else {
-                stopAutoAssign();
-            }
-        });
+  if (!autoRunning) return;
+
+  if (!shouldContinue) {
+    stopAutoAssign();
+    return;
+  }
+
+  // ✅ после Save грид мог обновиться/пересортироваться: пересчитываем индекс по ключу
+  setTimeout(() => {
+    const rowsNow = getPatientRows();
+    if (!rowsNow.length) return stopAutoAssign();
+
+    const idxNow = findRowIndexByKey(lastProcessedKey);
+
+    if (idxNow >= 0) {
+      // обработанный пациент всё ещё в гриде — следующий = idxNow + 1
+      autoRowIndex = idxNow + 1;
+    } else {
+      // обработанный пациент исчез/переместился — берём текущий selection (обычно это “следующий”)
+      const curIdx = getSelectedRowIndexSafe();
+      autoRowIndex = (curIdx >= 0 ? curIdx : 0);
+    }
+
+    autoTimer = setTimeout(autoAssignLoop, 900);
+  }, 400);
+
+});
     });
 }
 
