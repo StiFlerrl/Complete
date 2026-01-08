@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.31
+// @version      2.32
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.31';
+    const SCRIPT_VERSION = '2.32';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -143,6 +143,7 @@
             '$villagecare max$': "Cardio OK, ABD PEL THY only after approve thru FAX",
             '$medicaid$': "Repeat period 1 year!",
             '$hcp ipa$': "Нужна авторизация на все тесты!Можем взять сами",
+            '$uhc dual complete$': "Скоро будет требоваться направление, предупредить офис"
             },
         memberIdPrefixWarnings: {
             'DZG': "ONLY WITH MEDICAL NOTES",
@@ -187,12 +188,19 @@
                 newStudyName: 'PELV2',
                 newDiagnosisCode: ['R10.20', 'R10.84'],
             },
-                        {
+            {
                 type: 'replacement',
                 insurance: 'essential plan',
                 gender: 'Female',
                 studyToReplace: 'PEL2',
                 newStudyName: 'PELV2',
+                newDiagnosisCode: ['R10.20', 'R10.84'],
+            },
+            {
+                type: 'replacement',
+                insurance: '$medicare$',
+                gender: 'Female',
+                studyToReplace: 'PEL2',
                 newDiagnosisCode: ['R10.20', 'R10.84'],
             },
             {
@@ -376,8 +384,8 @@
             '$elderplan$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$fidelis$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$hf essential$': ['Zakheim, A.R.'],
-            '$hf medicare$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
-            '$hf medicaid$': ['Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
+            '$hf medicare$': ['Mittal, H.K.', 'Zakheim, A.R.'],
+            '$hf medicaid$': ['Zakheim, A.R.'],
             '$humana$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$emblemhealth$': ['Hikin, D.'], //HIP Somos
             'hip': ['Hikin, D.'],
@@ -394,7 +402,7 @@
             'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.', 'Complete PC'],
         },
 
-        specificReadingRules: [
+        specificReadingRules: [/*
             { insurance: '$hf medicare$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
             { insurance: '$hf medicaid$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
             { insurance: '$hf essential$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
@@ -426,8 +434,7 @@
             { facility: 'Dr. Olugbenga Dawodu', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Ramy George Geris Massoud, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Roman Rolando R MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Vine Mark H', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-
+            { facility: 'Vine Mark H', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'}, */
         ]
     };
 
@@ -1796,7 +1803,7 @@ function clickRow(row) {
             return rule.allowedStudies.some(s => (s || '').toUpperCase() === (studyName || '').toUpperCase());
         }
     }
-    return true; // если спец-правила не матчятся — не ограничиваем
+    return true;
 }
 
 function selectBestDoctor(allowedDocs, studyName, insName) {
@@ -2080,12 +2087,10 @@ function findMainGridSelectedRow() {
   if (okBtn) okBtn.click();
 }
 
-// “Окно редактирования Service” у тебя детектится по наличию строк внутри мультифилда
 function isServiceEditOpen() {
   return !!document.querySelector('.app-multifield-row');
 }
 
-// иногда Ext рисует маски/лоадеры — попробуем их учитывать как “busy”
 function isUiBusy() {
   return !!document.querySelector(
     '.x-mask, .x-mask-loading, .x-mask-msg, .x-loading, .loading-mask, .x-window-dlg'
@@ -2098,7 +2103,6 @@ function waitForServiceEditToClose(done, timeoutMs = 30000) {
   (function tick() {
     if (!autoRunning) return;
 
-    // постоянно “подчищаем” диалоги (Insurance / OK / No)
     clickNoOkIfAny();
 
     const open = isServiceEditOpen();
@@ -2129,7 +2133,6 @@ function processCurrentPatient(expectedIdx, callback) {
         return callback(false);
     }
 
-    // ✅ если вдруг ожидали одну строку, а реально выбрана другая — СТОП на этом пациенте
     if (typeof expectedIdx === 'number' && expectedIdx !== selectedIdx) {
         console.warn(`⚠️ AutoAssign mismatch: expected idx=${expectedIdx}, but selected idx=${selectedIdx}. Пропускаю пациента, чтобы не смешать данные.`);
         return callback(true);
@@ -2184,8 +2187,7 @@ function finishSave() {
 
   if (saveBtn) saveBtn.click();
 
-  // ✅ ждём реальное закрытие окна, а не “2 секунды наугад”
-  waitForServiceEditToClose(() => callback(true), 35000);
+  waitForServiceEditToClose(() => callback(true), 8000);
 }
 
             }, 1500);
@@ -2202,7 +2204,7 @@ function moveToNextRow() {
   const nextRow = rows[currentIdx + 1];
   if (!nextRow) return false;
 
-  clickRow(nextRow); // ✅ снимает старое выделение и кликает по новой строке
+  clickRow(nextRow);
   return true;
 }
 
@@ -2217,7 +2219,6 @@ function autoAssignLoop() {
 
     selectRowByIndex(autoRowIndex);
 
-    // ✅ ждём пока Ext/DOM реально выделит нужную строку
     waitForRowSelected(autoRowIndex, (selectedOk) => {
         if (!autoRunning) return;
 
@@ -2236,7 +2237,6 @@ function autoAssignLoop() {
     return;
   }
 
-  // ✅ после Save грид мог обновиться/пересортироваться: пересчитываем индекс по ключу
   setTimeout(() => {
     const rowsNow = getPatientRows();
     if (!rowsNow.length) return stopAutoAssign();
@@ -2244,10 +2244,8 @@ function autoAssignLoop() {
     const idxNow = findRowIndexByKey(lastProcessedKey);
 
     if (idxNow >= 0) {
-      // обработанный пациент всё ещё в гриде — следующий = idxNow + 1
       autoRowIndex = idxNow + 1;
     } else {
-      // обработанный пациент исчез/переместился — берём текущий selection (обычно это “следующий”)
       const curIdx = getSelectedRowIndexSafe();
       autoRowIndex = (curIdx >= 0 ? curIdx : 0);
     }
