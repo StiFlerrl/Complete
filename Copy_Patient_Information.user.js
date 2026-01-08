@@ -201,14 +201,8 @@
                 insurance: '$medicare$',
                 gender: 'Female',
                 studyToReplace: 'PEL2',
+                newStudyName: 'PELV2',
                 newDiagnosisCode: ['R10.20', 'R10.84'],
-            },
-            {
-                type: 'replacement',
-                insurance: 'essential plan',
-                gender: 'Female',
-                studyToReplace: 'PEL2',
-                newStudyName: 'PELV2'
             },
             {
                 type: 'replacement',
