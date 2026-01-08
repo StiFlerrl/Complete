@@ -2074,7 +2074,7 @@ function findMainGridSelectedRow() {
 
     function clickNoOkIfAny() {
   const footerBtns = Array.from(document.querySelectorAll('.x-window-footer button'));
-  const noBtn = footerBtns.find(b => b.textContent.trim() === 'No');
+  const noBtn = footerBtns.find(b => b.textContent.trim() === 'Yes');
   if (noBtn) noBtn.click();
 
   const okBtn = footerBtns.find(b => b.textContent.trim() === 'OK');
