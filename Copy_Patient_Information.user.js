@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.32
+// @version      2.33
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.32';
+    const SCRIPT_VERSION = '2.33';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -357,7 +357,8 @@
         readingAccountRules: [
             { insurance: '$1199$', account: '1199' },
             { insurance: '$medicare$', account: 'SF Medicare'},
-            { insurance: 'hf essential', account: 'SF HF' },
+            { insurance: '$hf essential$', account: 'SF HF' },
+            { insurance: '$hf medicaid$', account: 'SF HF' },
             { insurance: 'metroplus', account: 'MetroPlus QHP' },
             { insurance: 'uhc', account: 'UHC' },
             { insurance: 'essential plan', account: 'UHC' },
@@ -378,7 +379,7 @@
             '$elderplan$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$fidelis$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$hf essential$': ['Zakheim, A.R.'],
-            '$hf medicare$': ['Mittal, H.K.', 'Zakheim, A.R.'],
+            '$hf medicare$': ['Mittal, H.K.', 'Hikin, D.'],
             '$hf medicaid$': ['Zakheim, A.R.'],
             '$humana$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$emblemhealth$': ['Hikin, D.'], //HIP Somos
@@ -396,7 +397,7 @@
             'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.', 'Complete PC'],
         },
 
-        specificReadingRules: [/*
+        specificReadingRules: [
             { insurance: '$hf medicare$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
             { insurance: '$hf medicaid$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
             { insurance: '$hf essential$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
@@ -428,7 +429,7 @@
             { facility: 'Dr. Olugbenga Dawodu', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Ramy George Geris Massoud, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Roman Rolando R MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Vine Mark H', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'}, */
+            { facility: 'Vine Mark H', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'}, 
         ]
     };
 
