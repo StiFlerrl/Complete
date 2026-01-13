@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.33
+// @version      2.34
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.33';
+    const SCRIPT_VERSION = '2.34';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -409,13 +409,6 @@
             { facility: 'Rui Er Teng MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Hong Ye, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Wei Tan, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},            
-            { facility: 'Leonid Bukhman M.D', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Yiding Li MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Steven Kong, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Dr. Guo, Xiaojun M.D.', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Jun Yang, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Lin Shen-han DO', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
-            { facility: 'Baoen Jiang, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Gregory Rivera, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'}, // клиенты
             { facility: 'Dr. Yana Ryzhakova NP', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
             { facility: 'Juan Cortes, MD', insurance: 'hf', requiredReading: 'SF HF / Zakheim, A.R.'},
