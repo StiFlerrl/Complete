@@ -397,7 +397,7 @@
             '$hf medicaid$': ['Zakheim, A.R.'],
             '$humana$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$emblemhealth$': ['Hikin, D.'], //HIP Somos
-            'hip': ['Hikin, D.'],
+            'hip': ['Mittal, H.K.','Hikin, D.'],
             '$hcp ipa$': ['Hikin, D.'], // HealthCare Partners
             '$ghi$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$new york city employees$': ['Mittal, H.K.', 'Zakheim, A.R.'],
@@ -871,6 +871,14 @@
         const allPatientStudies = Object.keys(extractedData).filter(k => k.startsWith('Study')).map(k => extractedData[k]);
         let conflictFound = false;
 
+        //  HIP + ABD2 + Carotid => split врачей
+const hasABD2 = allPatientStudies.some(s => (s || '').toUpperCase() === 'ABD2');
+const hasCarotid = allPatientStudies.some(s => (s || '').toUpperCase() === 'CAROTID');
+const hipABD2CarotidSplit =
+  checkInsuranceMatch('hip', primaryInsuranceSubtype) && hasABD2 && hasCarotid;
+       // HIP ABD + CAR
+
+
         function passesSpecificDoctorStudyRules(docName, insName, studyName) {
   const rules = validationRules.specificDoctorStudyRules || [];
   for (const rule of rules) {
@@ -1251,6 +1259,18 @@ for (const historyEntry of historyData) {
                         doctorToValidate = doctor;
                         account = readingRule ? readingRule.account : validationRules.defaultReadingAccount;
                     }
+// ✅ Спец-правило: HIP + ABD2 + Carotid => split врачей
+if (hipABD2CarotidSplit) {
+  const st = (expectedStudyName || '').toUpperCase();
+
+  if (st === 'ABD2' && !doctorToValidate.includes('Hikin')) {
+    result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Для HIP при ABD2+Carotid в один день ABD2 должен быть на Hikin, D. (сейчас: "${doctorToValidate}").`);
+  }
+
+  if (st === 'CAROTID' && !doctorToValidate.includes('Mittal')) {
+    result.errors.push(`ОШИБКА: Study${i} ('${studyName}'): Для HIP при ABD2+Carotid в один день Carotid должен быть на Mittal, H.K. (сейчас: "${doctorToValidate}").`);
+  }
+}
 
                     let specificDoctorRuleTriggered = false;
                     if (validationRules.specificDoctorStudyRules) {
@@ -1850,7 +1870,14 @@ function selectBestDoctor(allowedDocs, studyName, insName) {
         const secondaryIns = secondaryRaw.toLowerCase().replace('secondary:', '').trim();
         const facility = (extractedData['Referring facility'] || '').toLowerCase();
         const allPatientStudies = Object.keys(extractedData).filter(k => k.startsWith('Study')).map(k => extractedData[k]);
-        const patientGender = (extractedData['Sex'] || '').toLowerCase();
+        //HIP ABD + CAR
+        const hasABD2_forHipSplit = allPatientStudies.some(s => (s || '').toUpperCase() === 'ABD2');
+const hasCarotid_forHipSplit = allPatientStudies.some(s => (s || '').toUpperCase() === 'CAROTID');
+const hipABD2CarotidSplit =
+  checkInsuranceMatch('hip', primaryIns) && hasABD2_forHipSplit && hasCarotid_forHipSplit;
+        //HIP ABD + CAR
+
+        const patientGender = (extractedData['Sex'] || '').toLowerCase();
 
 for (let i = 1; extractedData[`Study${i}`]; i++) {
         const studyName = extractedData[`Study${i}`];
@@ -1950,7 +1977,25 @@ if (!properDiag) {
                 }
             }
 
-                const suitableDoc = selectBestDoctor(candidateDocs, expectedStudyName, primaryIns);
+let suitableDoc = null;
+
+// HIP + ABD2 + Carotid в один день
+if (hipABD2CarotidSplit) {
+  const s = (expectedStudyName || '').toUpperCase();
+
+  if (s === 'ABD2') suitableDoc = 'Hikin, D.';
+  else if (s === 'CAROTID') suitableDoc = 'Mittal, H.K.';
+
+  // если вдруг по какой-то причине врача нет в кандидатах — fallback
+  if (suitableDoc && !candidateDocs.some(d => (d || '').includes(suitableDoc))) {
+    suitableDoc = null;
+  }
+}
+
+// обычная логика, если спец-правило не сработало
+if (!suitableDoc) {
+  suitableDoc = selectBestDoctor(candidateDocs, expectedStudyName, primaryIns);
+}
 
             if (suitableDoc) {
                 let finalValue = '';
