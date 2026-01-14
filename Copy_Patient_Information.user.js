@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.34
+// @version      2.35
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.34';
+    const SCRIPT_VERSION = '2.35';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -227,6 +227,20 @@
                 newStudyName: 'Abdominal',
                 newDiagnosisCode: ['R10.32']
             },
+            {
+                type: 'replacement',
+                insurance: '$bcbs medicaid$',
+                studyToReplace: 'PEL2',
+                newStudyName: 'PEL2',
+                newDiagnosisCode: ['R32'],
+            },
+            {
+                type: 'replacement',
+                insurance: '$bcbs somos$',
+                studyToReplace: 'PEL2',
+                newStudyName: 'PEL2',
+                newDiagnosisCode: ['R32'],
+            },
             { type: 'conflict', insurance: 'ghi', studies: ['ABD2', 'Renal Doppler'], message: "КОНФЛИКТ: Для GHI нельзя в один день делать ABD2 и Renal Doppler." },
             { type: 'conflict', insurance: '$medicaid of new york$', studies: ['Carotid', 'LEV'], message: "КОНФЛИКТ: Для Medicaid нельзя в один день делать CAR и LEV." },
             { type: 'conflict', insurance: '$medicaid of new york$', studies: ['LEV', 'LEA'], message: "КОНФЛИКТ: Для Medicaid нельзя в один день делать LEV и LEA." },
@@ -386,12 +400,13 @@
             'hip': ['Hikin, D.'],
             '$hcp ipa$': ['Hikin, D.'], // HealthCare Partners
             '$ghi$': ['Mittal, H.K.', 'Zakheim, A.R.'],
+            '$new york city employees$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$medicare$': ['Mittal, H.K.', 'Hikin, D.'],
             'metroplus': ['Zakheim, A.R.'],
             '$meritain health$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$oxford$': ['Mittal, H.K.'],
-            '$villagecare max$': ['Mittal, H.K.', 'Hikin, D.'],
+            '$villagecare max$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$vns$': ['Zakheim, A.R.'],
             'uhc': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.', 'Complete PC'],
