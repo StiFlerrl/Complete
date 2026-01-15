@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.35
+// @version      2.36
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.35';
+    const SCRIPT_VERSION = '2.36';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -250,24 +250,24 @@
             { type: 'conflict', insurance: ['aetna', '$fidelis$', 'humana', '$bcbs medicaid$','$bcbs somos$','$empire etrbj$' , 'molina', 'wellcare', 'hf', 'uhc', 'essential plan','$emblemhealth$'], studies: [['ABD2','ABDO3','Ab2','Abdominal'], 'Renal Doppler'], message: "КОНФЛИКТ: Для этой страховки нельзя в один день делать ABD и Renal Doppler." },
             { type: 'conflict', insurance: 'aetna', studies: ['ABI', ['Echocardiogram','Carotid','Abdominal Aorta2','LEA','LEV']], message: "КОНФЛИКТ: Для AETNA нельзя в один день делать эти исследования и ABI." },
             { type: 'conflict', studies: [['ABD2','ABDO3','Ab2','Abdominal'],['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV']], message: "КОНФЛИКТ: Тесты ABD и PEL не могут быть вместе." },
-            { type: 'conflict',studies: [["Carotid"],["UEA"]],"message":"КОНФЛИКТ: Тесты Carotid и UEA не могут быть вместе."},
-            { type: 'conflict',studies: [["Carotid"],["Soft tissue"]],"message":"КОНФЛИКТ: Тесты Carotid и Soft tissue не могут быть вместе."},
-            { type: 'conflict',studies: [["Carotid"],["Thyroid"]],"message":"КОНФЛИКТ: Тесты Carotid и THY не могут быть вместе."},
-            { type: 'conflict',studies: [["Soft tissue"],["Thyroid"]],"message":"КОНФЛИКТ: Тесты Soft Tissue и THY не могут быть вместе."},
-            { type: 'conflict',studies: [["LEA"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты LEA и AORTA не могут быть вместе."},
-            { type: 'conflict',studies: [["UEA"],["Soft tissue"]],"message":"КОНФЛИКТ: Тесты UEA и Soft tissue не могут быть вместе."},
-            { type: 'conflict',studies: [["UEA"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты UEA и AORTA не могут быть вместе."},
-            { type: 'conflict',studies: [["LEV"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты LEV и AORTA не могут быть вместе."},
-            { type: 'conflict',studies: [["Soft tissue"],["ABI"]],"message":"КОНФЛИКТ: Тесты Soft tissue и ABI не могут быть вместе."},
-            { type: 'conflict',studies: [["Soft tissue"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты Soft tissue и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['Carotid'],['UEA']],"message":"КОНФЛИКТ: Тесты Carotid и UEA не могут быть вместе."},
+            { type: 'conflict',studies: [['Carotid'],['Soft tissue']],"message":"КОНФЛИКТ: Тесты Carotid и Soft tissue не могут быть вместе."},
+            { type: 'conflict',studies: [['Carotid'],['Thyroid']],"message":"КОНФЛИКТ: Тесты Carotid и THY не могут быть вместе."},
+            { type: 'conflict',studies: [['Soft tissue'],['Thyroid']],"message":"КОНФЛИКТ: Тесты Soft Tissue и THY не могут быть вместе."},
+            { type: 'conflict',studies: [['LEA'],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты LEA и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['UEA'],["Soft tissue"]],"message":"КОНФЛИКТ: Тесты UEA и Soft tissue не могут быть вместе."},
+            { type: 'conflict',studies: [['UEA'],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты UEA и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['LEV'],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты LEV и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['Soft tissue'],["ABI"]],"message":"КОНФЛИКТ: Тесты Soft tissue и ABI не могут быть вместе."},
+            { type: 'conflict',studies: [['Soft tissue'],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты Soft tissue и AORTA не могут быть вместе."},
             { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и Renal Bladder не могут быть вместе."},
             { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и AORTA не могут быть вместе."},
             { type: 'conflict',studies: [["Renal Doppler"],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и REN BLADDER не могут быть вместе."},
             { type: 'conflict',studies: [["Renal Doppler"],['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и PELV не могут быть вместе."},
-            { type: 'conflict',studies: [["Renal Doppler"],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты REN DOPPLER и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [["Renal Doppler"],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и AORTA не могут быть вместе."},
             { type: 'conflict',studies: [['Retroperetonial2','Retroperetonial3','Retro'],['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV']],"message":"КОНФЛИКТ: Тесты REN BLADDER и PELV не могут быть вместе."},
-            { type: 'conflict',studies: [['Retroperetonial2','Retroperetonial3','Retro'],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты REN BLADDER и AORTA не могут быть вместе."},
-            { type: 'conflict',studies: [['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV'],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты PELV и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['Retroperetonial2','Retroperetonial3','Retro'],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты REN BLADDER и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV'],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты PELV и AORTA не могут быть вместе."},
         ],
         warnings: [
             {
@@ -413,6 +413,7 @@
         },
 
         specificReadingRules: [
+            { insurance: '$1199$', study: ['Abdominal Aorta2'], requiredReading: '1199 / Zakheim, A.R.' },
             { insurance: '$hf medicare$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
             { insurance: '$hf medicaid$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
             { insurance: '$hf essential$', study: ['PEL2', 'Pelvic TV2','Retroperetonial2'], requiredReading: 'SF HF / Zakheim, A.R.' },
