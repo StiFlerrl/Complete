@@ -1,13 +1,12 @@
 // ==UserScript==
-// @name         Facility Address Copy 
-// @namespace    http://tampermonkey.net/
-// @version      1.29
-// @description  Finds the correct Patient row among multiple selections and traverses groups correctly.
-// @author       Gemini
-// @match        https://emdspc.emsow.com/*
-// @grant        none
-// @updateURL
-// @downloadURL
+// @name         Facility Address Copy 
+// @namespace    http://tampermonkey.net/
+// @version      1.00
+// @description  Great tool for best team
+// @match        https://emdspc.emsow.com/*
+// @grant        none
+// @updateURL    https://raw.githubusercontent.com/StiFlerrl/Complete/main/address_copy.js
+// @downloadURL  https://raw.githubusercontent.com/StiFlerrl/Complete/main/address_copy.js
 // ==/UserScript==
 
 (function() {
