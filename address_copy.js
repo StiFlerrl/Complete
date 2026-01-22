@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Facility Address Copy 
+// @name         Facility Address Copy
 // @namespace    http://tampermonkey.net/
-// @version      1.00
+// @version      1.01
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,63 +12,54 @@
 (function() {
     'use strict';
 
+    // --- ⚙️ НАСТРОЙКИ (МОЖНО МЕНЯТЬ) ---
+    const CONFIG = {
+        DELAY_AFTER_WINDOW_CLOSE: 2000,  // Пауза после закрытия окна (мс)
+        DELAY_BETWEEN_PATIENTS:   1500,  // Пауза перед переключением на следующего (мс)
+        DELAY_OPEN_WINDOW:        3000   // Сколько ждать открытия окна после Ctrl+E (мс)
+    };
+    // -------------------------------------
+
     let autoRunning = false;
-    let lockedGridBody = null; // Ссылка на контейнер с пациентами
+    let lockedGridBody = null;
     let currentGlobalIndex = -1;
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // --- 1. ЛОГИКА ПОИСКА ПРАВИЛЬНОЙ ТАБЛИЦЫ ---
+    // --- 1. ПОИСК ТАБЛИЦЫ ---
 
     function findAndLockPatientGrid() {
-        // Находим ВСЕ выделенные строки на странице (и в офисах, и в ордерах, и в пациентах)
         const allSelected = Array.from(document.querySelectorAll('.x-grid3-row-selected'));
-
         if (allSelected.length === 0) {
             alert("❌ Ничего не выделено!");
             return false;
         }
 
         let patientRow = null;
-
-        // Перебираем выделенные строки, чтобы найти ту, которая похожа на пациента
         for (const row of allSelected) {
-            // Признаки пациента: ссылка на файлы, текст "Images", "Report" или "Demographics"
             if (row.querySelector('.view-dicomfiles-link') ||
                 row.innerText.includes('Images') ||
                 row.innerText.includes('Report') ||
                 row.innerText.includes('Demographics')) {
-
                 patientRow = row;
-                break; // Нашли!
+                break;
             }
         }
 
         if (!patientRow) {
-            alert("❌ Выделено что-то (Офис/Ордер), но строка пациента не найдена. Выделите пациента!");
+            alert("❌ Выделено не то (Офис?). Выделите пациента!");
             return false;
         }
 
-        // Находим родительский контейнер ИМЕННО ЭТОЙ таблицы
-        // Ищем ближайший .x-grid3 (обертка таблицы ExtJS)
         const gridWrapper = patientRow.closest('.x-grid3');
-        if (!gridWrapper) {
-            alert("Ошибка структуры ExtJS");
-            return false;
-        }
+        if (!gridWrapper) return false;
 
-        // Визуализируем захват
-        gridWrapper.style.border = "5px solid #27ae60"; // Зеленая рамка
+        gridWrapper.style.border = "5px solid #27ae60";
         gridWrapper.style.boxSizing = "border-box";
-
         lockedGridBody = gridWrapper;
-        console.log("🔒 Tabled Locked:", lockedGridBody);
+        console.log("🔒 Grid Locked.");
         return true;
     }
 
-    // --- 2. РАБОТА С ЗАХВАЧЕННЫМ СПИСКОМ ---
-
-    // Возвращает плоский список всех строк ТОЛЬКО внутри захваченной таблицы
-    // Это позволяет игнорировать группировку (даты, статусы) и переходить сквозь них
     function getLockedRows() {
         if (!lockedGridBody) return [];
         return Array.from(lockedGridBody.querySelectorAll('.x-grid3-row'));
@@ -76,24 +67,21 @@
 
     function updateCurrentIndex() {
         const rows = getLockedRows();
-        // Ищем выделенную строку внутри НАШЕЙ таблицы
         const selected = lockedGridBody.querySelector('.x-grid3-row-selected');
-
         if (selected) {
             currentGlobalIndex = rows.indexOf(selected);
-        } else {
-            // Если выделение слетело, но мы знаем предыдущий индекс - не сбрасываем его
-            if (currentGlobalIndex === -1) currentGlobalIndex = 0;
+        } else if (currentGlobalIndex === -1) {
+            currentGlobalIndex = 0;
         }
         return currentGlobalIndex;
     }
 
-    // --- 3. ДЕЙСТВИЯ ---
+    // --- 2. ДЕЙСТВИЯ ---
 
     function findSpecificButton(text, context = document) {
         const candidates = Array.from(context.querySelectorAll('button, .x-btn-text'));
         return candidates.find(el => {
-            return el.textContent.trim() === text && el.offsetParent !== null; // offsetParent checks visibility
+            return el.textContent.trim() === text && el.offsetParent !== null;
         });
     }
 
@@ -109,11 +97,10 @@
         if (!row) return;
         row.scrollIntoView({ block: 'center', behavior: 'auto' });
 
-        // Пытаемся кликнуть по разным элементам внутри строки, чтобы ExtJS "понял"
         const targets = [
-            row.querySelector('.x-grid3-col-1 .x-grid3-cell-inner'), // ID column
-            row.querySelector('.x-grid3-col-3 .x-grid3-cell-inner'), // Name column
-            row // Сама строка
+            row.querySelector('.x-grid3-col-1 .x-grid3-cell-inner'),
+            row.querySelector('.x-grid3-col-3 .x-grid3-cell-inner'),
+            row
         ];
 
         for (const target of targets) {
@@ -129,15 +116,15 @@
         }
     }
 
-    // --- 4. ОКНА ---
+    // --- 3. ОКНА ---
 
     async function handlePostSaveLogic() {
-        console.log("⏳ Waiting...");
+        console.log("⏳ Waiting for window close...");
         const warningTextPart = "Insurance information in the following future services";
 
         for (let i = 0; i < 100; i++) {
             const saveBtn = findSpecificButton('Save');
-            if (!saveBtn) return "SUCCESS"; // Окно закрылось
+            if (!saveBtn) return "SUCCESS";
 
             const messageBoxes = Array.from(document.querySelectorAll('.ext-mb-text, .x-window-body'));
             const warningBox = messageBoxes.find(el => el.innerText.includes(warningTextPart) && el.offsetParent !== null);
@@ -155,44 +142,42 @@
         }
     }
 
-    // --- 5. ЦИКЛ ОБРАБОТКИ ---
+    // --- 4. ПРОЦЕСС ---
 
     async function processSequence() {
         if (!autoRunning) return;
         if (!lockedGridBody) { stopAutoAssign(); return; }
 
         const rows = getLockedRows();
-
         if (currentGlobalIndex >= rows.length) {
             stopAutoAssign();
-            alert("🏁 Список в этой таблице закончен!");
+            alert("🏁 Список закончен!");
             return;
         }
 
         const currentRow = rows[currentGlobalIndex];
-
         console.log(`▶ Processing Row #${currentGlobalIndex}`);
 
         // 1. ВЫДЕЛЕНИЕ
         await aggressiveClick(currentRow);
         await sleep(500);
 
-        // 2. ПРОВЕРКА ДАННЫХ (Есть ли смысл открывать?)
-        // Проверяем наличие "Images" или "Report"
+        // 2. ПРОВЕРКА
         const hasData = currentRow.innerHTML.includes('view-dicomfiles-link') ||
                         currentRow.innerText.includes('Images') ||
                         currentRow.innerText.includes('Report');
 
         if (!hasData) {
-            console.log(`⏭️ Skipping Row #${currentGlobalIndex} (Empty/Header)`);
+            console.log(`⏭️ Skipping (No Data)`);
             currentGlobalIndex++;
-            await processSequence();
+            await processSequence(); // Рекурсия без задержек для пустых строк
             return;
         }
 
-        // 3. ОТКРЫТИЕ (Ctrl+E)
+        // 3. ОТКРЫТИЕ
         triggerCtrlE(currentRow);
-        await sleep(2500);
+        console.log(`⏳ Waiting ${CONFIG.DELAY_OPEN_WINDOW}ms for window...`);
+        await sleep(CONFIG.DELAY_OPEN_WINDOW);
 
         // 4. КОПИРОВАНИЕ
         const copyLink = document.querySelector('a.action-copy-ref-address') ||
@@ -212,20 +197,27 @@
             if (saveBtn) {
                 saveBtn.click();
                 await handlePostSaveLogic();
-                await sleep(1000);
+
+                // === ЗАДЕРЖКА ПОСЛЕ ЗАКРЫТИЯ ОКНА ===
+                console.log(`☕ Resting after close (${CONFIG.DELAY_AFTER_WINDOW_CLOSE}ms)...`);
+                await sleep(CONFIG.DELAY_AFTER_WINDOW_CLOSE);
+
             } else {
                 const closeBtn = document.querySelector('.x-window-header-close-btn');
                 if (closeBtn) closeBtn.click();
-                await sleep(1000);
+                await sleep(CONFIG.DELAY_AFTER_WINDOW_CLOSE);
             }
         } else {
-            console.log("ℹ️ Copy link missing or already done.");
+            console.log("ℹ️ Copy link missing.");
             const closeBtn = document.querySelector('.x-window-header-close-btn');
             if (closeBtn) closeBtn.click();
-            await sleep(1000);
+            await sleep(CONFIG.DELAY_AFTER_WINDOW_CLOSE);
         }
 
-        // 5. ПЕРЕХОД
+        // === ЗАДЕРЖКА ПЕРЕД СЛЕДУЮЩИМ ПАЦИЕНТОМ ===
+        console.log(`🐢 Slowing down before next (${CONFIG.DELAY_BETWEEN_PATIENTS}ms)...`);
+        await sleep(CONFIG.DELAY_BETWEEN_PATIENTS);
+
         currentGlobalIndex++;
         await processSequence();
     }
@@ -233,14 +225,10 @@
     // --- UI ---
 
     function startAutoAssign() {
-        // 1. Пытаемся найти и захватить правильную таблицу
         if (!findAndLockPatientGrid()) return;
 
-        // 2. Определяем текущий индекс ВНУТРИ этой таблицы
         const idx = updateCurrentIndex();
         if (idx === -1) {
-            // Если таблица захвачена, но индекс не ясен - пробуем начать с 0
-             alert("Таблица захвачена, но строка не выделена. Начинаю сначала.");
              currentGlobalIndex = 0;
         }
 
