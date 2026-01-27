@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.36
+// @version      2.37
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.36';
+    const SCRIPT_VERSION = '2.37';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -357,7 +357,7 @@
                 allowedStudies: ['Echocardiogram']
             },
                         {
-                doctor: 'Hikin, D.',
+                doctor: 'Zakheim, A.R.',
                 insurance: '$villagecare max$',
                 allowedStudies: ['ABD2', 'Ab2', 'Abdominal', 'PEL2', 'PELV2', 'PEL TV','Pelvic TV2','PELV3', 'Thyroid', 'Retroperetonial2','Retroperetonial3','Retro']
             },
