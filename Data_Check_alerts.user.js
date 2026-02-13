@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Info check + alerts
 // @namespace    http://tampermonkey.net/
-// @version      2.5
+// @version      2.6
 // @description  Fix tabs 
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -419,6 +419,7 @@ if (label === 'dob:' && !procDOB) {
     if (!matchedSimple && /simple\W+open\b/i.test(text)) { plans.push('Simple Open план обнаружен! Wellcare Copay $500'); matchedSimple = true; }
     if (!matchedSimple && /simple/i.test(text))       { plans.push('Simple план обнаружен! Wellcare Copay $500'); }
     if (!matchedSimple && /Giveback open/i.test(text))       { plans.push('Giveback open план обнаружен! Wellcare Copay $350'); }
+      if (!matchedSimple && /Aetna Medicare Elite/i.test(text))       { plans.push('Deductible doesnt apply for Aetna medicare Elite plan'); }
 
 
     add(/\bsomos\b/i,                      'SOMOS IPA план обнаружен! Не стадии можем разрешить');
@@ -445,6 +446,7 @@ if (label === 'dob:' && !procDOB) {
     add(/\bgold\b/i,     'Gold план обнаружен! Проверь Deductible!');
     add(/\bsilver\b/i,   'Silver план обнаружен! Проверь Deductible!');
     add(/\bleaf\b/i,     'Leaf план обнаружен! Проверь Deductible!');
+    add(/\bAetna Medicare Elite\b/i,     'Deductible doesnt apply for Aetna medicare Elite plan');
 
     const covStr  = '30: Health Benefit Plan Coverage';
     const eligTriggers = [
