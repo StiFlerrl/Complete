@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.37
+// @version      2.38
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -383,15 +383,15 @@
         doctorInsuranceRestrictions: {
             '$1199$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             'molina': ['Mittal, H.K.', 'Zakheim, A.R.'],
-            'aetna': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
+            'aetna': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'], //'Complete PC'
             '$bcbs medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$bcbs somos$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
-            '$empire y8e$': ['Complete PC'],
-            '$empire vof$': ['Mittal, H.K.', 'Hikin, D.', 'Complete PC'],
+            '$empire y8e$': ['Hikin, D.'],//'Complete PC'
+            '$empire vof$': ['Mittal, H.K.', 'Hikin, D.', ], //'Complete PC'
             '$centers plan for healthy living$': ['Zakheim, A.R.'],
-            '$cigna$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
+            '$cigna$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', ],//'Complete PC'
             '$elderplan$': ['Mittal, H.K.', 'Zakheim, A.R.'],
-            '$fidelis$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
+            '$fidelis$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],//'Complete PC'
             '$hf essential$': ['Zakheim, A.R.'],
             '$hf medicare$': ['Mittal, H.K.', 'Hikin, D.'],
             '$hf medicaid$': ['Zakheim, A.R.'],
@@ -407,9 +407,9 @@
             '$meritain health$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$oxford$': ['Mittal, H.K.'],
             '$villagecare max$': ['Mittal, H.K.', 'Zakheim, A.R.'],
-            '$vns$': ['Zakheim, A.R.'],
-            'uhc': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
-            'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.', 'Complete PC'],
+            '$vns$': ['Mittal, H.K.','Zakheim, A.R.'],
+            'uhc': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],//'Complete PC'
+            'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.'], //'Complete PC'
         },
 
         specificReadingRules: [
