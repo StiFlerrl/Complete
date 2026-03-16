@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.38
+// @version      2.39
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.37';
+    const SCRIPT_VERSION = '2.39';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -260,13 +260,13 @@
             { type: 'conflict',studies: [['LEV'],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты LEV и AORTA не могут быть вместе."},
             { type: 'conflict',studies: [['Soft tissue'],["ABI"]],"message":"КОНФЛИКТ: Тесты Soft tissue и ABI не могут быть вместе."},
             { type: 'conflict',studies: [['Soft tissue'],["Abdominal Aorta2"]],"message":"КОНФЛИКТ: Тесты Soft tissue и AORTA не могут быть вместе."},
-            { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и Renal Bladder не могут быть вместе."},
-            { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты ABD и AORTA не могут быть вместе."},
-            { type: 'conflict',studies: [["Renal Doppler"],['Retroperetonial2','Retroperetonial3','Retro']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и REN BLADDER не могут быть вместе."},
+            { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro','Renal']],"message":"КОНФЛИКТ: Тесты ABD и Renal Bladder не могут быть вместе."},
+            { type: 'conflict',studies: [['ABD2','ABDO3','Ab2','Abdominal'],['Retroperetonial2','Retroperetonial3','Retro','Renal']],"message":"КОНФЛИКТ: Тесты ABD и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [["Renal Doppler"],['Retroperetonial2','Retroperetonial3','Retro','Renal']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и REN BLADDER не могут быть вместе."},
             { type: 'conflict',studies: [["Renal Doppler"],['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и PELV не могут быть вместе."},
             { type: 'conflict',studies: [["Renal Doppler"],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты REN DOPPLER и AORTA не могут быть вместе."},
-            { type: 'conflict',studies: [['Retroperetonial2','Retroperetonial3','Retro'],['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV']],"message":"КОНФЛИКТ: Тесты REN BLADDER и PELV не могут быть вместе."},
-            { type: 'conflict',studies: [['Retroperetonial2','Retroperetonial3','Retro'],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты REN BLADDER и AORTA не могут быть вместе."},
+            { type: 'conflict',studies: [['Retroperetonial2','Retroperetonial3','Retro','Renal'],['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV']],"message":"КОНФЛИКТ: Тесты REN BLADDER и PELV не могут быть вместе."},
+            { type: 'conflict',studies: [['Retroperetonial2','Retroperetonial3','Retro','Renal'],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты REN BLADDER и AORTA не могут быть вместе."},
             { type: 'conflict',studies: [['PELV2','PEL2','Pelvic TV2','Scrotal','PEL TV'],['Abdominal Aorta2']],"message":"КОНФЛИКТ: Тесты PELV и AORTA не могут быть вместе."},
         ],
         warnings: [
@@ -359,11 +359,11 @@
                         {
                 doctor: 'Zakheim, A.R.',
                 insurance: '$villagecare max$',
-                allowedStudies: ['ABD2', 'Ab2', 'Abdominal', 'PEL2', 'PELV2', 'PEL TV','Pelvic TV2','PELV3', 'Thyroid', 'Retroperetonial2','Retroperetonial3','Retro']
+                allowedStudies: ['ABD2', 'Ab2', 'Abdominal', 'PEL2', 'PELV2', 'PEL TV','Pelvic TV2','PELV3', 'Thyroid', 'Retroperetonial2','Retroperetonial3','Retro','Renal']
             },
         ],
         doctorRestrictions: {
-            'Mittal, H.K.': { prohibits: ['ABD2', 'Ab2', 'Abdominal', 'PEL2', 'PELV2', 'PEL TV','Pelvic TV2','PELV3', 'Thyroid', 'Retroperetonial2','Retroperetonial3','Retro'] },
+            'Mittal, H.K.': { prohibits: ['ABD2', 'Ab2', 'Abdominal', 'PEL2', 'PELV2', 'PEL TV','Pelvic TV2','PELV3', 'Thyroid', 'Retroperetonial2','Retroperetonial3','Retro','Renal'] },
             'Zakheim, A.R.': { prohibits: ['Echocardiogram'] },
             'Hikin, D.':     { prohibits: ['Echocardiogram', 'ABI', 'SUDO3', 'SUDO', 'VNG3'] },
             'Complete PC':   { prohibits: ['Echocardiogram', 'Thyroid', 'SUDO3', 'SUDO', 'ABI', 'VNG3'] }
@@ -383,15 +383,15 @@
         doctorInsuranceRestrictions: {
             '$1199$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             'molina': ['Mittal, H.K.', 'Zakheim, A.R.'],
-            'aetna': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'], //'Complete PC'
+            'aetna': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$bcbs medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$bcbs somos$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
-            '$empire y8e$': ['Hikin, D.'],//'Complete PC'
-            '$empire vof$': ['Mittal, H.K.', 'Hikin, D.', ], //'Complete PC'
+            '$empire y8e$': ['Complete PC'],
+            '$empire vof$': ['Mittal, H.K.', 'Hikin, D.', 'Complete PC'],
             '$centers plan for healthy living$': ['Zakheim, A.R.'],
-            '$cigna$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', ],//'Complete PC'
+            '$cigna$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$elderplan$': ['Mittal, H.K.', 'Zakheim, A.R.'],
-            '$fidelis$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],//'Complete PC'
+            '$fidelis$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$hf essential$': ['Zakheim, A.R.'],
             '$hf medicare$': ['Mittal, H.K.', 'Hikin, D.'],
             '$hf medicaid$': ['Zakheim, A.R.'],
@@ -399,7 +399,7 @@
             '$emblemhealth$': ['Hikin, D.'], //HIP Somos
             'hip': ['Mittal, H.K.','Hikin, D.'],
             '$hcp ipa$': ['Hikin, D.'], // HealthCare Partners
-            '$ghi$': ['Mittal, H.K.', 'Zakheim, A.R.'],
+            //'$ghi$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$new york city employees$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$medicare$': ['Mittal, H.K.', 'Hikin, D.'],
@@ -407,9 +407,9 @@
             '$meritain health$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$oxford$': ['Mittal, H.K.'],
             '$villagecare max$': ['Mittal, H.K.', 'Zakheim, A.R.'],
-            '$vns$': ['Mittal, H.K.','Zakheim, A.R.'],
-            'uhc': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],//'Complete PC'
-            'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.'], //'Complete PC'
+            '$vns$': ['Zakheim, A.R.'],
+            'uhc': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
+            'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.', 'Complete PC'],
         },
 
         specificReadingRules: [
