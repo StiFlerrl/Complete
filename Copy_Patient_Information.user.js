@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.39
+// @version      2.40
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.39';
+    const SCRIPT_VERSION = '2.40';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -286,7 +286,7 @@
             'Hikin, D.',
             'Mittal, H.K.',
             'Zakheim, A.R.',
-            'Complete PC',
+            //'Complete PC',
         ],
         facilityInsuranceStudyProhibitions: [
             {
