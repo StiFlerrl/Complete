@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.40';
+    const SCRIPT_VERSION = '2.41';
 
     // ====================================================================
     // RULES CONFIGURATION
