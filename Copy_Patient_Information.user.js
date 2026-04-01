@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.40
+// @version      2.41
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -409,7 +409,7 @@
             '$villagecare max$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$vns$': ['Zakheim, A.R.'],
             'uhc': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
-            'wellcare': ['Mittal, H.K.', 'Zakheim, A.R.', 'Complete PC'],
+            'wellcare': ['Zakheim, A.R.', 'Complete PC'],
         },
 
         specificReadingRules: [
