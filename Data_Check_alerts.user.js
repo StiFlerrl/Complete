@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Info check + alerts
 // @namespace    http://tampermonkey.net/
-// @version      2.6
+// @version      2.7
 // @description  Fix tabs 
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -415,9 +415,9 @@ if (label === 'dob:' && !procDOB) {
     const add = (re, msg, ok = true) => { if (ok && re.test(text) && !plans.includes(msg)) plans.push(msg); };
 
     let matchedSimple = false;
-    if (/simple\W+open\W*\(ppo\)/i.test(text)) { plans.push('Simple Open план обнаружен! Wellcare Copay $500'); matchedSimple = true; }
-    if (!matchedSimple && /simple\W+open\b/i.test(text)) { plans.push('Simple Open план обнаружен! Wellcare Copay $500'); matchedSimple = true; }
-    if (!matchedSimple && /simple/i.test(text))       { plans.push('Simple план обнаружен! Wellcare Copay $500'); }
+    //if (/simple\W+open\W*\(ppo\)/i.test(text)) { plans.push('Simple Open план обнаружен! Wellcare Copay $500'); matchedSimple = true; }
+    //if (!matchedSimple && /simple\W+open\b/i.test(text)) { plans.push('Simple Open план обнаружен! Wellcare Copay $500'); matchedSimple = true; }
+    //if (!matchedSimple && /simple/i.test(text))       { plans.push('Simple план обнаружен! Wellcare Copay $500'); }
     if (!matchedSimple && /Giveback open/i.test(text))       { plans.push('Giveback open план обнаружен! Wellcare Copay $350'); }
       if (!matchedSimple && /Aetna Medicare Elite/i.test(text))       { plans.push('Deductible doesnt apply for Aetna medicare Elite plan'); }
 
