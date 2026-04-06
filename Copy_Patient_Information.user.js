@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.41
+// @version      2.42
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.41';
+    const SCRIPT_VERSION = '2.42';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -234,11 +234,39 @@
                 newStudyName: 'PEL2',
                 newDiagnosisCode: ['R32'],
             },
+                        {
+                type: 'replacement',
+                insurance: '$bcbs medicaid$',
+                studyToReplace: 'Pelvic TV2',
+                newStudyName: 'Pelvic TV2',
+                newDiagnosisCode: ['R32'],
+            },
+                        {
+                type: 'replacement',
+                insurance: '$bcbs medicaid$',
+                studyToReplace: 'Scrotal',
+                newStudyName: 'Scrotal',
+                newDiagnosisCode: ['R32'],
+            },
             {
                 type: 'replacement',
                 insurance: '$bcbs somos$',
                 studyToReplace: 'PEL2',
                 newStudyName: 'PEL2',
+                newDiagnosisCode: ['R32'],
+            },
+                                    {
+                type: 'replacement',
+                insurance: '$bcbs somos$',
+                studyToReplace: 'Pelvic TV2',
+                newStudyName: 'Pelvic TV2',
+                newDiagnosisCode: ['R32'],
+            },
+                        {
+                type: 'replacement',
+                insurance: '$bcbs somos$',
+                studyToReplace: 'Scrotal',
+                newStudyName: 'Scrotal',
                 newDiagnosisCode: ['R32'],
             },
             { type: 'conflict', insurance: 'ghi', studies: ['ABD2', 'Renal Doppler'], message: "КОНФЛИКТ: Для GHI нельзя в один день делать ABD2 и Renal Doppler." },
