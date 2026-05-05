@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.42
+// @version      2.43
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.42';
+    const SCRIPT_VERSION = '2.43';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -126,7 +126,7 @@
             'hip': ['Echocardiogram'],
             'hcp ipa': ['Echocardiogram'],
             'emblemhealth': ['Echocardiogram'],
-            '$hf medicare$': ['SUDO3','SUDO'],
+            '$hf medicare$': ['Echocardiogram','SUDO3','SUDO'],
             '$hf essential$': ['Echocardiogram', 'SUDO3','SUDO'],
             '$hf medicaid$': ['Echocardiogram', 'SUDO3','SUDO'],
             '$centers plan for healthy living$': ['Echocardiogram'],
@@ -429,7 +429,8 @@
             '$hcp ipa$': ['Hikin, D.'], // HealthCare Partners
             //'$ghi$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$new york city employees$': ['Mittal, H.K.', 'Zakheim, A.R.'],
-            '$medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
+            '$magnacare$': ['NEED CALL'],
+            '$medicaid$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$medicare$': ['Mittal, H.K.', 'Hikin, D.'],
             'metroplus': ['Zakheim, A.R.'],
             '$meritain health$': ['Mittal, H.K.', 'Zakheim, A.R.'],
