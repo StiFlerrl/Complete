@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Unread Timer + Sound Toggle & Snippets
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
@@ -20,8 +20,8 @@
   const IGNORED_LABELS = ['SCHEDULE MESSAGE', 'Log sheet'];
 
   const SNIPPETS = {
-    referralHip: `We can only accept the patient after the referring office sends the referral with the following details:\n\nDr. Hikin Dimitry\nNPI: 1457619017\n3047 Ave U, 2nd Fl, Brooklyn, NY 11229\n\nUnfortunately, we won’t be able to proceed without the referral.\nPlease let us know once it has been submitted.\n\nThank you for your understanding!`,
-    referralUhc: `We can only accept the patient after the referring office sends the referral with the following details:\n\nDr. Racanelli\nNPI: 1639194921\n3047 Ave U, 2nd Fl, Brooklyn, NY 11229\n\nUnfortunately, we won’t be able to proceed without the referral.\n\nPlease let us know once it has been submitted.\nThank you for your understanding!`,
+    referral_Hikin: `We can only accept the patient after the referring office sends the referral with the following details:\n\nDr. Hikin Dimitry\nNPI: 1457619017\n3047 Ave U, 2nd Fl, Brooklyn, NY 11229\n\nUnfortunately, we won’t be able to proceed without the referral.\nPlease let us know once it has been submitted.\n\nThank you for your understanding!`,
+    referral_Mittal: `We can only accept the patient after the referring office sends the referral with the following details:\n\nDr. Mittal, HARMESH\nNPI: 1295802098\n3047 Ave U, 2nd Fl, Brooklyn, NY 11229\n\nUnfortunately, we won’t be able to proceed without the referral.\nPlease let us know once it has been submitted.\n\nThank you for your understanding!`,
     needTime: `Apologies, I need a little more time to give you an accurate response. I am already working on your request!`,
     authorizationHcp: `Authorization is required through the EZ Net portal for this patient. Please submit the authorization. Unfortunately, we cannot accept the patient without it.`,
     highCopay: `The patient's plan has a copay of ... dollars.`,
@@ -177,8 +177,8 @@ function insertCompleteListFromClipboard() {
     const buttons = [
       ['Complete list','completeList'],
       ['Need time', 'needTime'],
-      ['Referral Hip','referralHip'],
-      ['Referral Uhc','referralUhc'],
+      ['Referral Hikin','referral_Hikin'],
+      ['Referral Mittal','referral_Mittal'],
       ['Answers','answers']
     ];
     buttons.forEach(([label, key]) => {
