@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.52
+// @version      2.53
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.52';
+    const SCRIPT_VERSION = '2.53';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -429,6 +429,7 @@
             '$bcbs somos$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$empire y8e$': ['Complete PC'],
             '$empire vof$': ['Mittal, H.K.', 'Hikin, D.', 'Complete PC'],
+            '$empire bcbs$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$centers plan for healthy living$': ['Zakheim, A.R.'],
             '$cigna$': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
             '$elderplan$': ['Mittal, H.K.', 'Zakheim, A.R.'],
@@ -448,6 +449,7 @@
             'metroplus': ['Zakheim, A.R.'],
             '$meritain health$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             'oxford': ['Mittal, H.K.'],
+            'essential plan': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.'],
             '$villagecare max$': ['Mittal, H.K.', 'Zakheim, A.R.'],
             '$vns$': ['Zakheim, A.R.'],
             'uhc': ['Mittal, H.K.', 'Zakheim, A.R.', 'Hikin, D.', 'Complete PC'],
