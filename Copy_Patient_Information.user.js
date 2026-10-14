@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.53
+// @version      2.55
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.53';
+    const SCRIPT_VERSION = '2.55';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -514,6 +514,18 @@
         document.body.removeChild(textarea);
     }
 
+    // Короткая обратная связь на кнопке: «скопировано» и т.п.
+    function flashButton(btn, text, ms = 1200) {
+        if (!btn) return;
+        if (btn.dataset.flashOrig === undefined) btn.dataset.flashOrig = btn.textContent;
+        btn.textContent = text;
+        clearTimeout(btn._flashTimer);
+        btn._flashTimer = setTimeout(() => {
+            btn.textContent = btn.dataset.flashOrig;
+            delete btn.dataset.flashOrig;
+        }, ms);
+    }
+
     function escapeHtml(s) {
         return String(s)
             .replace(/&/g, '&amp;')
@@ -549,30 +561,31 @@
         return 999; // неизвестный тест -> откладываем
     }
 
-    // Англоязычные заметки для Copy answer: конфликты (что отложить) + повторы по истории
+    // Англоязычные заметки для Copy answer: запреты, повторы, конфликты (что отложить).
+    // excluded = тесты, которые не делаем: их убираем из основной строки ответа.
     function getAnswerNotes(extractedData, historyData) {
         const notes = [];
+        const excluded = new Set();
         const primaryIns = (extractedData['Insurance Subtype'] || '').toLowerCase();
         const allStudies = Object.keys(extractedData)
             .filter(k => /^Study\d+$/.test(k))
             .map(k => extractedData[k])
             .filter(s => s && s !== 'N/A');
+        const remaining = () => allStudies.filter(s => !excluded.has(s));
         const strip = s => (s || '').replace(/\d/g, '').replace(/\s+/g, ' ').trim();
 
-        // Конфликты: оставляем более дорогой тест, более дешёвый -> "next time"
-        for (const rule of validationRules.conditional) {
-            if (rule.type !== 'conflict') continue;
-            if (!checkInsuranceMatch(rule.insurance, primaryIns)) continue;
-            if (!checkStudyConditions(rule.studies, allStudies)) continue;
-            const sides = (rule.studies || []).map(g => {
-                const arr = Array.isArray(g) ? g : [g];
-                return allStudies.find(s => arr.includes(s)) || arr[0];
-            });
-            if (sides.length >= 2 && sides[0] && sides[1]) {
-                const [s1, s2] = sides;
-                const keep  = studyPriority(s1) <= studyPriority(s2) ? s1 : s2;
-                const defer = keep === s1 ? s2 : s1;
-                notes.push(`${strip(defer)} next time, we can't do ${strip(keep)} and ${strip(defer)} in the same day.`);
+        // Запрещённые тесты для этой страховки
+        const findProhKey = (obj) => Object.keys(obj).find(k => {
+            const kl = k.toLowerCase();
+            if (kl.startsWith('$') && kl.endsWith('$')) return kl.slice(1, -1) === primaryIns;
+            return primaryIns.includes(kl);
+        });
+        const prohKey = findProhKey(validationRules.prohibitedStudies);
+        const prohList = prohKey ? validationRules.prohibitedStudies[prohKey] : [];
+        for (const study of allStudies) {
+            if (prohList.includes(study)) {
+                notes.push(`NO, we can't do ${strip(study)} with this insurance.`);
+                excluded.add(study);
             }
         }
 
@@ -586,7 +599,7 @@
             const cfg = validationRules.repeatInsuranceRules[key] || validationRules.repeatInsuranceRules['DEFAULT_DAYS'];
             const baseDays = (typeof cfg === 'object' && cfg.days) ? cfg.days : (typeof cfg === 'number' ? cfg : 180);
             const isHF = n => n.includes('healthfirst') || n.includes('hf ');
-            for (const study of allStudies) {
+            for (const study of remaining()) {
                 const days = (typeof cfg === 'object' && cfg.studyOverrides && cfg.studyOverrides[study]) || baseDays;
                 for (const h of historyData) {
                     const histIns = h.insurances[0];
@@ -597,29 +610,36 @@
                     const d = getDaysBetweenDates(currentDOS, parseDate(h.dos));
                     if (d !== null && d > 0 && d <= days) {
                         notes.push(`NO, ${strip(study)} was done ${d}d ago (${h.dos}).`);
+                        excluded.add(study);
                         break;
                     }
                 }
             }
         }
-        // Запрещённые тесты для этой страховки
-        const findProhKey = (obj) => Object.keys(obj).find(k => {
-            const kl = k.toLowerCase();
-            if (kl.startsWith('$') && kl.endsWith('$')) return kl.slice(1, -1) === primaryIns;
-            return primaryIns.includes(kl);
-        });
-        const prohKey = findProhKey(validationRules.prohibitedStudies);
-        const prohList = prohKey ? validationRules.prohibitedStudies[prohKey] : [];
-        for (const study of allStudies) {
-            if (prohList.includes(study)) {
-                notes.push(`NO, we can't do ${strip(study)} with this insurance.`);
+
+        // Конфликты (среди оставшихся): оставляем более дорогой тест, более дешёвый -> "next time"
+        for (const rule of validationRules.conditional) {
+            if (rule.type !== 'conflict') continue;
+            if (!checkInsuranceMatch(rule.insurance, primaryIns)) continue;
+            const studiesNow = remaining();
+            if (!checkStudyConditions(rule.studies, studiesNow)) continue;
+            const sides = (rule.studies || []).map(g => {
+                const arr = Array.isArray(g) ? g : [g];
+                return studiesNow.find(s => arr.includes(s)) || arr[0];
+            });
+            if (sides.length >= 2 && sides[0] && sides[1]) {
+                const [s1, s2] = sides;
+                const keep  = studyPriority(s1) <= studyPriority(s2) ? s1 : s2;
+                const defer = keep === s1 ? s2 : s1;
+                notes.push(`${strip(defer)} next time, we can't do ${strip(keep)} and ${strip(defer)} in the same day.`);
+                excluded.add(defer);
             }
         }
 
-        // UHC Dual Complete / UHC Community — текст про реферал
+        // UHC Dual Complete / UHC Community — текст про реферал (только по тестам, которые делаем)
         if (checkInsuranceMatch(['uhc dual complete', 'uhc community'], primaryIns)) {
-            const hasEcho = allStudies.some(s => (s || '').toLowerCase() === 'echocardiogram');
-            const hasNonEcho = allStudies.some(s => (s || '').toLowerCase() !== 'echocardiogram');
+            const hasEcho = remaining().some(s => (s || '').toLowerCase() === 'echocardiogram');
+            const hasNonEcho = remaining().some(s => (s || '').toLowerCase() !== 'echocardiogram');
             const refHikin = `We can only accept the patient after the referring office sends the referral with the following details:
 
 Dr. Hikin Dimitry
@@ -643,7 +663,7 @@ Thank you for your understanding!`;
             if (hasNonEcho) notes.push(refHikin);
             if (hasEcho) notes.push(refMittal);
         }
-        return [...new Set(notes)];
+        return { notes: [...new Set(notes)], excluded };
     }
 
     function getTableRowValue(container, labelText) {
@@ -696,6 +716,11 @@ Thank you for your understanding!`;
         return docs;
     }
 
+    // Emsow 1.2.688 (10.2026): колонка Studies / Details получила id "studies-details" вместо номера 7
+    function getStudiesCell(row) {
+        return row.querySelector('.x-grid3-td-studies-details') || row.querySelector('.x-grid3-td-7');
+    }
+
     function markRowSkipped(row, msg) {
         if (!row) return;
         row.style.backgroundColor = '#FFE8CC';
@@ -724,7 +749,7 @@ Thank you for your understanding!`;
         return name;
     }
 
-    function extractAnswerInfo(rowElement) {
+    function extractAnswerInfo(rowElement, excluded = new Set()) {
         const patientNameElement = rowElement.querySelector('.x-grid3-td-3 .text-bold span');
         let patientName = patientNameElement ? patientNameElement.textContent.trim() : '';
         if (patientName.includes(',')) {
@@ -742,8 +767,12 @@ Thank you for your understanding!`;
                 insuranceName = insuranceText.includes(':') ? insuranceText.split(':')[1].trim() : insuranceText;
             }
         }
-        const studyElements = rowElement.querySelectorAll('.x-grid3-td-7 b span');
-        const uniqueStudies = [...new Set(Array.from(studyElements).map(el => el.textContent.trim().replace(/\d/g, '')).filter(Boolean))];
+        const studiesCell = getStudiesCell(rowElement);
+        const studyElements = studiesCell ? studiesCell.querySelectorAll('b span') : [];
+        const uniqueStudies = [...new Set(Array.from(studyElements)
+            .map(el => el.textContent.trim())
+            .filter(s => s && !excluded.has(s))
+            .map(s => s.replace(/\d/g, '')))];
 
         let result = patientName;
         if (insuranceName) result += ` - ${insuranceName}`;
@@ -995,7 +1024,7 @@ Thank you for your understanding!`;
             data.attachmentsByStudy = attachmentsByStudy;
         }
 
-        const studiesColumn = rowElement.querySelector('.x-grid3-td-7');
+        const studiesColumn = getStudiesCell(rowElement);
         if (studiesColumn) {
             studiesColumn.querySelectorAll('td[style*="vertical-align:top"]').forEach((tableCell, index) => {
                 const studyNum = index + 1, studyPrefix = `Study${studyNum}`;
@@ -1734,6 +1763,7 @@ function getExtGridFromMainGrid() {
             button.onclick = (e) => {
                 e.stopPropagation();
                 copyToClipboard(content);
+                flashButton(button, '✓');
             };
             return button;
         };
@@ -1754,17 +1784,18 @@ function getExtGridFromMainGrid() {
                 copyAnswerButton.textContent = 'Copy answer';
                 copyAnswerButton.style.cssText = `padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #e0e0e0; cursor: pointer; font-size: 12px; width: 95px; text-align: center;`;
                 copyAnswerButton.addEventListener('click', async () => {
-                    const info = extractAnswerInfo(row);
-                    if (!info) return;
                     const extractedData = extractPatientData(row);
                     let historyData = [];
                     if (extractedData['History URL']) {
                         try { historyData = await fetchHistoryData(extractedData['History URL']); } catch (e) {}
                     }
-                    const notes = getAnswerNotes(extractedData, historyData);
+                    const { notes, excluded } = getAnswerNotes(extractedData, historyData);
+                    const info = extractAnswerInfo(row, excluded);
+                    if (!info) return;
                     let text = info + ' - ';
                     if (notes.length) text += '\n' + notes.join('\n');
                     copyToClipboard(text);
+                    flashButton(copyAnswerButton, '✓ Copied');
                 });
                 buttonsWrapper.appendChild(copyAnswerButton);
 
@@ -1781,22 +1812,23 @@ function getExtGridFromMainGrid() {
 
                         const extractedData = extractPatientData(row);
 
-                        console.log("--- Extracted Data for Validation ---");
-                        console.log(`Дата проверки: ${new Date().toLocaleDateString("ru-RU")}`);
+                        // данные пациента в консоль — только с DEBUG
+                        log("--- Extracted Data for Validation ---");
+                        log(`Дата проверки: ${new Date().toLocaleDateString("ru-RU")}`);
                         let logOutput = "";
                         for (const key in extractedData) {
                             if (key !== 'attachmentsByStudy' && Object.prototype.hasOwnProperty.call(extractedData, key)) {
                                 logOutput += `${key} - ${extractedData[key] || 'N/A'}\n`;
                             }
                         }
-                        console.log(logOutput);
+                        log(logOutput);
 
                         if (extractedData['History URL']) {
                              extractedData['History Data'] = await fetchHistoryData(extractedData['History URL']);
-                             console.log("History Data:", extractedData['History Data']);
+                             log("History Data:", extractedData['History Data']);
                         }
 
-                        console.log("-------------------------------------");
+                        log("-------------------------------------");
 
                         const validationResult = validatePatientData(extractedData, false);
                         displayValidationResult(row, validationResult);
@@ -1874,26 +1906,16 @@ function getExtGridFromMainGrid() {
     //======================
     // Модуль автоасайнинга
     // =====================
+    // Строки идентифицируем по service_id, а не по номеру: после Save грид перезагружается,
+    // строка уезжает в другую группу статуса (группировка по service_status_system),
+    // номера строк сдвигаются — из-за этого раньше пациенты перескакивались.
 
-    let autoRowIndex = 0;
-    let lastProcessedKey = null;
+    const magicDone = new Set();    // service_id, обработанные в этом запуске
+    const magicIgnore = new Set();  // строки выше той, с которой начали
+    const magicSkips = new Map();   // service_id -> { name, msg }: что пропущено и почему
+    let magicEdited = 0;
 
-function getRowKey(row) {
-  if (!row) return null;
-  const icon = row.querySelector('img[lazyqtipapi*="fetchRepeatedStudiesHistory"]');
-  const url = icon?.getAttribute('lazyqtipapi');
-  if (url) return url; // ✅ самый стабильный ключ
-  // fallback если вдруг нет history:
-  const name = row.querySelector('.x-grid3-td-3 .text-bold span')?.textContent?.trim() || '';
-  const dos  = row.querySelector('.x-grid3-td-2 .x-grid3-cell-inner')?.textContent?.trim() || '';
-  return `${dos}|${name}`;
-}
-
-function findRowIndexByKey(key) {
-  if (!key) return -1;
-  const rows = getPatientRows();
-  return rows.findIndex(r => getRowKey(r) === key);
-}
+    function isVisible(el) { return !!(el && el.offsetParent !== null); }
 
 function getPatientRows() {
     const mainGrid = getMainGrid();
@@ -1901,46 +1923,50 @@ function getPatientRows() {
     return Array.from(mainGrid.querySelectorAll('.x-grid3-row'))
         .filter(r => r.offsetParent !== null && r.querySelectorAll('td.x-grid3-cell').length > 5);
 }
-    function getSelectedRowIndexSafe() {
-    const extGrid = getExtGridFromMainGrid();
-    if (extGrid && extGrid.store && extGrid.getSelectionModel) {
-        const sm = extGrid.getSelectionModel();
-        const rec = sm.getSelected ? sm.getSelected() : null;
-        if (rec) return extGrid.store.indexOf(rec);
-    }
 
-    // fallback по DOM
-    const rows = getPatientRows();
-    const sel = findMainGridSelectedRow();
-    return sel ? rows.indexOf(sel) : -1;
-}
-
-function waitForRowSelected(targetIdx, cb, tries = 25) {
-    if (!autoRunning) return;
-
-    const ok = getSelectedRowIndexSafe() === targetIdx;
-    if (ok) return cb(true);
-
-    if (tries <= 0) return cb(false);
-    setTimeout(() => waitForRowSelected(targetIdx, cb, tries - 1), 80);
-}
-
-
-function selectRowByIndex(idx) {
-    const rows = getPatientRows();
-    if (idx < 0 || idx >= rows.length) return false;
-
-    const extGrid = getExtGridFromMainGrid();
-    if (extGrid) {
+// service_id строки: record.id из Ext store; запасной путь — "#763192" в колонке Service
+function getRowServiceId(row) {
+    if (!row) return null;
+    const grid = getExtGridFromMainGrid();
+    if (grid) {
         try {
-            extGrid.getSelectionModel().selectRow(idx, false);
-            extGrid.getView().focusRow(idx);
-            extGrid.getView().scrollRowIntoView(idx);
-            return true;
+            const idx = grid.getView().findRowIndex(row);
+            const rec = (idx !== false && idx >= 0) ? grid.store.getAt(idx) : null;
+            if (rec) return String(rec.id);
         } catch (e) {}
     }
+    const m = (row.querySelector('.x-grid3-td-1 [qtip="Service ID"]')?.textContent || '').match(/\d+/);
+    return m ? m[0] : null;
+}
 
-    const row = rows[idx];
+function getRowById(id) {
+    return getPatientRows().find(r => getRowServiceId(r) === id) || null;
+}
+
+function getSelectedServiceId() {
+    const grid = getExtGridFromMainGrid();
+    try {
+        const rec = grid && grid.getSelectionModel().getSelected();
+        if (rec) return String(rec.id);
+    } catch (e) {}
+    const sel = getPatientRows().find(r => r.classList.contains('x-grid3-row-selected'));
+    return sel ? getRowServiceId(sel) : null;
+}
+
+function selectRowById(id) {
+    const row = getRowById(id);
+    if (!row) return false;
+    const grid = getExtGridFromMainGrid();
+    if (grid) {
+        try {
+            const idx = grid.getView().findRowIndex(row);
+            if (idx !== false && idx >= 0) {
+                grid.getSelectionModel().selectRow(idx, false);
+                grid.getView().focusRow(idx);
+                return true;
+            }
+        } catch (e) {}
+    }
     const cell = row.querySelector('td.x-grid3-cell') || row;
     row.scrollIntoView({ block: 'center' });
     ['mousedown', 'mouseup', 'click'].forEach(ev =>
@@ -1949,15 +1975,31 @@ function selectRowByIndex(idx) {
     return true;
 }
 
-function clickRow(row) {
-    const rows = getPatientRows();
-    rows.forEach(r => r.classList.remove('x-grid3-row-selected', 'x-grid-row-selected'));
+// Выбор строки с повторами: грид может как раз перерисовываться после Save предыдущего пациента
+function selectAndConfirm(id, cb, attempt = 1) {
+    if (!autoRunning) return;
+    selectRowById(id);
+    let tries = 25;
+    (function check() {
+        if (!autoRunning) return;
+        if (getSelectedServiceId() === id) return cb(true);
+        if (--tries > 0) return setTimeout(check, 80);
+        if (attempt < 3) return setTimeout(() => selectAndConfirm(id, cb, attempt + 1), 700);
+        cb(false);
+    })();
+}
 
-    const clickTarget = row.querySelector('td.x-grid3-cell') || row;
-    row.scrollIntoView({ block: 'center' });
-    ['mousedown', 'mouseup', 'click'].forEach(e =>
-        clickTarget.dispatchEvent(new MouseEvent(e, { bubbles: true }))
-    );
+// Пропуск с причиной: строка подсвечивается, причина попадает в сводку в конце
+function skipPatient(row, id, msg) {
+    const name = row?.querySelector('.x-grid3-td-3 .text-bold span')?.textContent.trim() || '';
+    magicSkips.set(id, { name, msg });
+    markRowSkipped(row, msg);
+    console.warn(`AutoAssign: пропуск #${id}: ${msg}`);
+}
+
+// После перезагрузки грида пометки стираются — возвращаем их
+function reapplySkipMarks() {
+    for (const [id, s] of magicSkips) markRowSkipped(getRowById(id), s.msg);
 }
 
     let autoRunning = false;
@@ -2031,7 +2073,7 @@ function clickRow(row) {
             setTimeout(() => {
                 element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', keyCode: 9, which: 9, bubbles: true }));
                 element.blur();
-                try { document.querySelector('.x-window-header').click(); } catch(e){}
+                try { Array.from(document.querySelectorAll('.x-window-header')).find(isVisible)?.click(); } catch(e){}
 
                 // проверяем асайнинг врача
                 setTimeout(() => {
@@ -2358,57 +2400,25 @@ if (!suitableDoc) {
         nextAction();
     }
 
-function findMainGridSelectedRow() {
-    try {
-        const mainGrid = getMainGrid();
-        if (!mainGrid) return null;
-
-        const candidates = Array.from(
-            mainGrid.querySelectorAll('.x-grid3-row-selected, .x-grid-row-selected, .x-grid3-row[aria-selected="true"]')
-        );
-
-        const patientRow = candidates.find(row =>
-            row.offsetParent !== null &&
-            row.querySelectorAll('td.x-grid3-cell').length > 5
-        );
-
-        return patientRow || null;
-    } catch (e) { return null; }
-}
-
-
-    function selectFirstPatientRow() {
-    const rows = Array.from(document.querySelectorAll('.x-grid3-row'))
-        .filter(r => r.querySelectorAll('td.x-grid3-cell').length > 5 && r.offsetParent !== null);
-
-    if (rows.length === 0) return null;
-
-    const firstRow = rows[0];
-    firstRow.scrollIntoView({ block: 'center' });
-    ['mousedown', 'mouseup', 'click'].forEach(e =>
-        firstRow.dispatchEvent(new MouseEvent(e, { bubbles: true }))
-    );
-    firstRow.classList.add('x-grid3-row-selected', 'x-grid-row-selected');
-    return firstRow;
-}
-
+    // Только видимые кнопки: скрытые окна Ext остаются в DOM, их кнопки трогать нельзя
     function clickNoOkIfAny() {
-  const footerBtns = Array.from(document.querySelectorAll('.x-window-footer button'));
-  const noBtn = footerBtns.find(b => b.textContent.trim() === 'Yes');
-  if (noBtn) noBtn.click();
+  const footerBtns = Array.from(document.querySelectorAll('.x-window-footer button')).filter(isVisible);
+  const yesBtn = footerBtns.find(b => b.textContent.trim() === 'Yes');
+  if (yesBtn) yesBtn.click();
 
   const okBtn = footerBtns.find(b => b.textContent.trim() === 'OK');
   if (okBtn) okBtn.click();
 }
 
 function isServiceEditOpen() {
-  return !!document.querySelector('.app-multifield-row');
+  return Array.from(document.querySelectorAll('.app-multifield-row')).some(isVisible);
 }
 
+// Ext 3: маска загрузки = .ext-el-mask; окно MessageBox (.x-window-dlg) после первого показа живёт в DOM скрытым
 function isUiBusy() {
-  return !!document.querySelector(
-    '.x-mask, .x-mask-loading, .x-mask-msg, .x-loading, .loading-mask, .x-window-dlg'
-  );
+  return Array.from(document.querySelectorAll(
+    '.ext-el-mask, .x-mask, .x-mask-loading, .x-mask-msg, .x-loading, .loading-mask, .x-window-dlg'
+  )).some(isVisible);
 }
 
 function waitForServiceEditToClose(done, timeoutMs = 30000) {
@@ -2421,7 +2431,7 @@ function waitForServiceEditToClose(done, timeoutMs = 30000) {
 
     const open = isServiceEditOpen();
     const busy = isUiBusy();
-    const insuranceDlg = !!document.querySelector('.app-details-dlg');
+    const insuranceDlg = Array.from(document.querySelectorAll('.app-details-dlg')).some(isVisible);
 
     if (!open && !busy && !insuranceDlg) return done(true);
 
@@ -2435,27 +2445,22 @@ function waitForServiceEditToClose(done, timeoutMs = 30000) {
 }
 
 
-function processCurrentPatient(expectedIdx, callback) {
+function processCurrentPatient(expectedId, callback) {
     if (!autoRunning) return;
 
-    const selectedIdx = getSelectedRowIndexSafe();
-    const row = findMainGridSelectedRow();
-    lastProcessedKey = getRowKey(row);
+    const row = getRowById(expectedId);
+    if (!row) return callback(true); // строка пропала из грида (перезагрузка/фильтр) — нечего делать
 
-    if (!row || selectedIdx < 0) {
-        console.warn("❌ Make magic: не вижу выбранную строку пациента.");
-        return callback(false);
-    }
-
-    if (typeof expectedIdx === 'number' && expectedIdx !== selectedIdx) {
-        console.warn(`⚠️ AutoAssign mismatch: expected idx=${expectedIdx}, but selected idx=${selectedIdx}. Пропускаю пациента, чтобы не смешать данные.`);
+    // Выделена не та строка — не трогаем, чтобы не смешать данные пациентов
+    if (getSelectedServiceId() !== expectedId) {
+        skipPatient(row, expectedId, 'Выделилась другая строка - пропущено, проверьте вручную.');
         return callback(true);
     }
 
     const rowText = row.innerText || '';
     const matchedSkip = SKIP_KEYWORDS.find(k => rowText.includes(k));
     if (matchedSkip) {
-        console.log(`Skipping: ${matchedSkip}`);
+        skipPatient(row, expectedId, `Пропуск по слову "${matchedSkip}".`);
         return callback(true);
     }
 
@@ -2468,23 +2473,22 @@ function processCurrentPatient(expectedIdx, callback) {
             return (kl.startsWith('$') && kl.endsWith('$')) ? kl.slice(1, -1) === primaryInsForBlock : primaryInsForBlock.includes(kl);
         });
         if (blockedKey) {
-            markRowSkipped(row, validationRules.notAcceptedInsurances[blockedKey]);
+            skipPatient(row, expectedId, validationRules.notAcceptedInsurances[blockedKey]);
             return callback(true);
         }
 
-        let missingDocs = false;
-        try {
-            for (let i = 1; extractedData[`Study${i}`]; i++) {
-                const studyName = extractedData[`Study${i}`];
-                const attachments = extractedData.attachmentsByStudy?.[studyName] || [];
-                if (!attachments.includes('Images') || !attachments.includes('Preliminary report')) {
-                    missingDocs = true;
-                    break;
-                }
-            }
-        } catch(e) { }
-
-        if (missingDocs) return callback(true);
+        // Без Images / Preliminary report не назначаем — но теперь видно, почему пациент пропущен
+        const missingDocs = [];
+        for (let i = 1; extractedData[`Study${i}`]; i++) {
+            const studyName = extractedData[`Study${i}`];
+            const attachments = extractedData.attachmentsByStudy?.[studyName] || [];
+            const missing = ['Images', 'Preliminary report'].filter(t => !attachments.includes(t));
+            if (missing.length) missingDocs.push(`${studyName}: ${missing.join(' & ')}`);
+        }
+        if (missingDocs.length) {
+            skipPatient(row, expectedId, `Нет документов (${missingDocs.join('; ')}) - пропущено.`);
+            return callback(true);
+        }
 
         const actions = calculateRequiredActions(extractedData);
         if (actions.length === 0) return callback(true);
@@ -2492,22 +2496,24 @@ function processCurrentPatient(expectedIdx, callback) {
         // СТРОГО: если для страховки нет правила выбора врача — не назначаем дефолтного, пропускаем пациента
         const primaryInsForDoc = (extractedData['Insurance Subtype'] || '').toLowerCase();
         if (actions.some(a => a.field === 'reading') && !insuranceHasDoctorRule(primaryInsForDoc)) {
-            markRowSkipped(row, `Для страховки "${extractedData['Primary insurance'] || primaryInsForDoc}" врач не найден — пропущено, назначьте вручную.`);
-            console.warn('AutoAssign: пропуск пациента — нет врача для страховки:', primaryInsForDoc);
+            skipPatient(row, expectedId, `Для страховки "${extractedData['Primary insurance'] || primaryInsForDoc}" врач не найден — пропущено, назначьте вручную.`);
             return callback(true);
         }
 
         const editBtn = Array.from(document.querySelectorAll('button.icon-edit'))
-            .find(b => b.offsetParent !== null && b.textContent.trim() === 'Edit');
+            .find(b => isVisible(b) && b.textContent.trim() === 'Edit');
 
-        if (!editBtn) return callback(true);
+        if (!editBtn) {
+            skipPatient(row, expectedId, 'Не нашёл кнопку Edit - пропущено.');
+            return callback(true);
+        }
 
         setTimeout(() => {
             editBtn.click();
 
             setTimeout(() => {
                 if (!autoRunning) return;
-                if (!document.querySelector('.app-multifield-row')) {
+                if (!isServiceEditOpen()) {
                     setTimeout(() => performActionsInModal(actions, finishSave), 1000);
                 } else {
                     performActionsInModal(actions, finishSave);
@@ -2517,9 +2523,15 @@ function finishSave() {
   if (!autoRunning) return;
 
   const saveBtn = Array.from(document.querySelectorAll('button'))
-    .find(b => b.textContent.trim() === 'Save');
+    .find(b => isVisible(b) && b.textContent.trim() === 'Save');
 
-  if (saveBtn) saveBtn.click();
+  if (!saveBtn) {
+    showInterventionPrompt('Не нашёл кнопку Save в окне редактирования.\nСохраните вручную и нажмите «Продолжить».')
+      .then(c => c === 'stop' ? stopAutoAssign() : waitForServiceEditToClose(() => callback(true), 8000));
+    return;
+  }
+  saveBtn.click();
+  magicEdited++;
 
   waitForServiceEditToClose(() => callback(true), 8000);
 }
@@ -2527,92 +2539,97 @@ function finishSave() {
             }, 1500);
         }, 500);
     }
-function moveToNextRow() {
-  const rows = getPatientRows();
-  if (!rows.length) return false;
-
-  const currentRow = findMainGridSelectedRow();
-  const currentIdx = currentRow ? rows.indexOf(currentRow) : -1;
-  if (currentIdx === -1) return false;
-
-  const nextRow = rows[currentIdx + 1];
-  if (!nextRow) return false;
-
-  clickRow(nextRow);
-  return true;
-}
-
-
-
 function autoAssignLoop() {
     if (!autoRunning) return;
+    reapplySkipMarks();
 
-    const rows = getPatientRows();
-    if (!rows.length) return stopAutoAssign();
-    if (autoRowIndex >= rows.length) return stopAutoAssign();
+    const candidates = getPatientRows().filter(r => {
+        const id = getRowServiceId(r);
+        return id && !magicDone.has(id) && !magicIgnore.has(id);
+    });
+    if (!candidates.length) return stopAutoAssign(true);
 
-    selectRowByIndex(autoRowIndex);
+    const row = candidates[0];
+    const id = getRowServiceId(row);
+    magicDone.add(id); // сразу: при любой ошибке не зациклимся на этой строке
+    updateMagicButton(candidates.length - 1);
 
-    waitForRowSelected(autoRowIndex, (selectedOk) => {
+    selectAndConfirm(id, (selectedOk) => {
         if (!autoRunning) return;
-
         if (!selectedOk) {
-            console.warn(`❌ AutoAssign: не смог подтвердить выбор строки idx=${autoRowIndex}. Пропускаю, чтобы не путать пациентов.`);
-            autoRowIndex++;
+            skipPatient(getRowById(id) || row, id, 'Не удалось выбрать строку - пропущено, проверьте вручную.');
             autoTimer = setTimeout(autoAssignLoop, 600);
             return;
         }
-
-        processCurrentPatient(autoRowIndex, (shouldContinue) => {
-  if (!autoRunning) return;
-
-  if (!shouldContinue) {
-    stopAutoAssign();
-    return;
-  }
-
-  setTimeout(() => {
-    const rowsNow = getPatientRows();
-    if (!rowsNow.length) return stopAutoAssign();
-
-    const idxNow = findRowIndexByKey(lastProcessedKey);
-
-    if (idxNow >= 0) {
-      autoRowIndex = idxNow + 1;
-    } else {
-      const curIdx = getSelectedRowIndexSafe();
-      autoRowIndex = (curIdx >= 0 ? curIdx : 0);
-    }
-
-    autoTimer = setTimeout(autoAssignLoop, 900);
-  }, 400);
-
-});
+        processCurrentPatient(id, (shouldContinue) => {
+            if (!autoRunning) return;
+            if (!shouldContinue) return stopAutoAssign();
+            autoTimer = setTimeout(autoAssignLoop, 900);
+        });
     });
 }
 
-
-
+function updateMagicButton(left = 0) {
+    const btn = document.getElementById('magic-btn');
+    if (!btn) return;
+    if (autoRunning) {
+        const done = magicDone.size;
+        btn.textContent = `⏹️ Stop Magic (${done}/${done + left})`;
+        btn.style.backgroundColor = '#dc3545';
+    } else {
+        btn.textContent = '✨ Make magic!';
+        btn.style.backgroundColor = '#9B59B6';
+    }
+}
 
 function startAutoAssign() {
     if (autoRunning) return;
     autoRunning = true;
+    magicDone.clear();
+    magicIgnore.clear();
+    magicSkips.clear();
+    magicEdited = 0;
+    document.getElementById('magic-summary')?.remove();
 
-    const btn = document.getElementById('magic-btn');
-    if (btn) {
-        btn.textContent = '⏹️ Stop Magic';
-        btn.style.backgroundColor = '#dc3545';
-    }
-
+    // Начинаем с выделенной строки (если есть): всё, что выше, не трогаем
     const rows = getPatientRows();
-    const selectedIdx = rows.findIndex(r =>
-        r.classList.contains('x-grid3-row-selected') || r.classList.contains('x-grid-row-selected')
-    );
-    autoRowIndex = selectedIdx >= 0 ? selectedIdx : 0;
+    const selId = getSelectedServiceId();
+    const selIdx = selId ? rows.findIndex(r => getRowServiceId(r) === selId) : -1;
+    rows.slice(0, Math.max(selIdx, 0)).forEach(r => {
+        const id = getRowServiceId(r);
+        if (id) magicIgnore.add(id);
+    });
 
     autoAssignLoop();
 }
 
+    // Сводка после Magic: сколько просмотрено/исправлено и кого пропустили с причиной (клик — выбрать строку)
+    function showMagicSummary(finished) {
+        document.getElementById('magic-summary')?.remove();
+        const o = document.createElement('div');
+        o.id = 'magic-summary';
+        o.style.cssText = `position:fixed; right:20px; bottom:70px; z-index:2147483646;
+            background:#fff; border:2px solid #9B59B6; border-radius:8px; padding:12px 14px;
+            box-shadow:0 4px 18px rgba(0,0,0,.25); max-width:420px; max-height:50vh; overflow:auto; font-size:12px; color:#222;`;
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight:bold;color:#9B59B6;margin-bottom:6px;';
+        title.textContent = `${finished ? '✨ Magic готово' : '⏹️ Magic остановлен'}: просмотрено ${magicDone.size}, исправлено ${magicEdited}, пропущено ${magicSkips.size}`;
+        o.appendChild(title);
+        for (const [id, s] of magicSkips) {
+            const line = document.createElement('div');
+            line.style.cssText = 'margin:3px 0;padding:3px 0;border-top:1px solid #eee;cursor:pointer;';
+            line.title = 'Выбрать строку';
+            line.textContent = `⏭️ ${s.name || '#' + id}: ${s.msg}`;
+            line.onclick = () => selectRowById(id);
+            o.appendChild(line);
+        }
+        const close = document.createElement('button');
+        close.textContent = 'Закрыть';
+        close.style.cssText = 'margin-top:8px;padding:4px 12px;border:1px solid #ccc;border-radius:5px;background:#eee;cursor:pointer;float:right;';
+        close.onclick = () => o.remove();
+        o.appendChild(close);
+        document.body.appendChild(o);
+    }
 
     function showInterventionPrompt(message) {
         return new Promise((resolve) => {
@@ -2636,13 +2653,14 @@ function startAutoAssign() {
         });
     }
 
-    function stopAutoAssign() {
+    function stopAutoAssign(finished = false) {
+        const wasRunning = autoRunning;
         autoRunning = false;
         clearTimeout(autoTimer);
-        const btn = document.getElementById('magic-btn');
-        if (btn) {
-            btn.textContent = '✨ Make magic!';
-            btn.style.backgroundColor = '#9B59B6';
+        updateMagicButton();
+        if (wasRunning) {
+            reapplySkipMarks();
+            showMagicSummary(finished);
         }
         console.log("Stopped");
     }
