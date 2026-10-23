@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Unread Timer + Sound Toggle & Snippets
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
@@ -73,6 +73,16 @@
 
 function insertCompleteListFromClipboard() {
   navigator.clipboard.readText().then(text => {
+    const editor = document.querySelector('div[aria-label="Message Body"]') || document.querySelector('div[role="textbox"]');
+
+    // Готовые ответы из Assign helper (кнопка Copy answers в Emsow) — вставляем как есть
+    const isRawEmsowList = /^-{3,}\s*$/m.test(text) && /^DoB:/m.test(text);
+    if (!isRawEmsowList) {
+      if (editor && text.trim()) { editor.focus(); document.execCommand('insertText', false, text.trim()); }
+      return;
+    }
+
+    // Сырой список из Emsow "Copy patients list" — короткие строки без проверки правил
     const blocks = text.split(/-{3,}/).map(b => b.trim()).filter(b => b);
 
     const result = blocks.map(block => {
@@ -93,7 +103,6 @@ function insertCompleteListFromClipboard() {
       return `${nameMatch} - ${insuranceName} - ${cleanedStudy} -`;
     }).join('\n');
 
-    const editor = document.querySelector('div[aria-label="Message Body"]') || document.querySelector('div[role="textbox"]');
     if(editor){
       editor.focus();
       document.execCommand('insertText', false, result);
