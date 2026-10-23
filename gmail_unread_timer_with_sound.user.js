@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Unread Timer + Sound Toggle & Snippets
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  Gmail Check helper for best team
 // @match        *://mail.google.com/*
 // @run-at       document-idle
@@ -78,14 +78,15 @@ function insertCompleteListFromClipboard() {
     const result = blocks.map(block => {
       const lines = block.split('\n').map(line => line.trim()).filter(line => line);
 
+      // Блок из Emsow "Copy patients list": имя, DoB:, Gender:, Referring facility:, "страховка | ID", тесты через запятую
       const nameMatch = lines[0] || '';
-      const insuranceLine = lines.find(line => line.includes('|'));
+      const isLabeled = line => /^[A-Za-z][A-Za-z ]*:\s/.test(line); // DoB:, Gender:, Referring facility: и будущие поля
+      const rest = lines.slice(1).filter(line => !isLabeled(line));
+      const insuranceLine = rest.find(line => line.includes('|'));
       const insuranceName = insuranceLine ? insuranceLine.split('|')[0].trim() : 'SELF';
 
-      // Найти строку с тестом (первую строку, которая не содержит DoB или страховку)
-      const studyLine = lines.find(line =>
-        !line.startsWith('DoB:') && !line.includes('|') && line !== nameMatch
-      ) || '';
+      // Тесты = строка без метки и без страховки (Emsow пишет её последней)
+      const studyLine = rest.filter(line => line !== insuranceLine).pop() || '';
 
       const cleanedStudy = studyLine.replace(/\d+/g, '').trim();
 
