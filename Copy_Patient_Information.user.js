@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.55
+// @version      2.56
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.55';
+    const SCRIPT_VERSION = '2.56';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -563,9 +563,11 @@
 
     // Англоязычные заметки для Copy answer: запреты, повторы, конфликты (что отложить).
     // excluded = тесты, которые не делаем: их убираем из основной строки ответа.
+    // referrals = нужные направления (полный текст есть и в notes; Copy answers выносит его в конец письма).
     function getAnswerNotes(extractedData, historyData) {
         const notes = [];
         const excluded = new Set();
+        const referrals = [];
         const primaryIns = (extractedData['Insurance Subtype'] || '').toLowerCase();
         const allStudies = Object.keys(extractedData)
             .filter(k => /^Study\d+$/.test(k))
@@ -660,10 +662,10 @@ Unfortunately, we won’t be able to proceed without the referral.
 Please let us know once it has been submitted.
 
 Thank you for your understanding!`;
-            if (hasNonEcho) notes.push(refHikin);
-            if (hasEcho) notes.push(refMittal);
+            if (hasNonEcho) { notes.push(refHikin); referrals.push({ doctor: 'Hikin', text: refHikin }); }
+            if (hasEcho) { notes.push(refMittal); referrals.push({ doctor: 'Mittal', text: refMittal }); }
         }
-        return { notes: [...new Set(notes)], excluded };
+        return { notes: [...new Set(notes)], excluded, referrals };
     }
 
     function getTableRowValue(container, labelText) {
@@ -1720,6 +1722,75 @@ function getExtGridFromMainGrid() {
         toolbar.appendChild(newCell);
     }
 
+    // Ответ по всем пациентам ордера для письма в офис (вставляется в Gmail кнопкой Complete list):
+    // строка пациента + заметки как у Copy answer; длинный текст направления — один раз в конце.
+    async function buildOrderAnswers() {
+        const mainGrid = getMainGrid();
+        if (!mainGrid) return { text: '', count: 0 };
+        const rows = Array.from(mainGrid.querySelectorAll('.x-grid3-row'))
+            .filter(r => r.querySelectorAll('td.x-grid3-cell').length > 5);
+        const blocks = await Promise.all(rows.map(async row => {
+            const extractedData = extractPatientData(row);
+            let historyData = [];
+            if (extractedData['History URL']) {
+                try { historyData = await fetchHistoryData(extractedData['History URL']); } catch (e) {}
+            }
+            const { notes, excluded, referrals } = getAnswerNotes(extractedData, historyData);
+            const referralTexts = referrals.map(r => r.text);
+            const lines = [extractAnswerInfo(row, excluded) + ' - '];
+            notes.filter(n => !referralTexts.includes(n)).forEach(n => lines.push(n));
+            referrals.forEach(r => lines.push(`Referral required: Dr. ${r.doctor} (details below).`));
+            return { lines, referralTexts };
+        }));
+        const hasNotes = blocks.some(b => b.lines.length > 1);
+        let text = blocks.map(b => b.lines.join('\n')).join(hasNotes ? '\n\n' : '\n');
+        const referralTexts = [...new Set(blocks.flatMap(b => b.referralTexts))];
+        if (referralTexts.length) text += '\n\n' + referralTexts.join('\n\n');
+        return { text, count: rows.length };
+    }
+
+    function addCopyAnswersButton() {
+        if (document.getElementById('copy-answers-btn')) return;
+        const toolbar = document.querySelector('.app-order-tools .x-toolbar-left-row');
+        if (!toolbar) return;
+        const newCell = document.createElement('td');
+        newCell.className = 'x-toolbar-cell';
+        const btn = document.createElement('button');
+        btn.id = 'copy-answers-btn';
+        btn.textContent = 'Copy answers';
+        btn.title = 'Ответ по всем пациентам ордера: тесты, next time, повторы, направления. В Gmail - кнопка Complete list';
+        btn.style.cssText = `padding: 3px 8px; border: 1px solid #ccc; border-radius: 3px; background-color: #3498DB; color: white; cursor: pointer; font-size: 11px; font-weight: bold; margin-left: 5px;`;
+        btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = '...';
+            try {
+                const { text, count } = await buildOrderAnswers();
+                if (!count) { btn.textContent = 'Copy answers'; flashButton(btn, 'Нет пациентов', 1500); return; }
+                // после await пользовательский клик «остыл» — execCommand('copy') может не сработать, поэтому Clipboard API
+                try { await navigator.clipboard.writeText(text); } catch (e) { copyToClipboard(text); }
+                btn.textContent = 'Copy answers';
+                flashButton(btn, `✓ Copied (${count})`, 1500);
+            } catch (e) {
+                console.error("Error during 'Copy answers':", e);
+                btn.textContent = 'Copy answers';
+                flashButton(btn, 'Ошибка', 1500);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+        const table = document.createElement('table');
+        table.className = 'x-btn x-btn-text-icon';
+        table.innerHTML = `<tbody class="x-btn-small x-btn-icon-small-left"><tr><td class="x-btn-ml"><i>&nbsp;</i></td><td class="x-btn-mc"></td><td class="x-btn-mr"><i>&nbsp;</i></td></tr></tbody>`;
+        table.querySelector('.x-btn-mc').appendChild(btn);
+        newCell.appendChild(table);
+        const checkCell = document.getElementById('check-order-btn')?.closest('td.x-toolbar-cell');
+        if (checkCell && checkCell.parentNode === toolbar) {
+            toolbar.insertBefore(newCell, checkCell.nextSibling);
+        } else {
+            toolbar.appendChild(newCell);
+        }
+    }
+
     function addVersionDisplay() {
         if (typeof SCRIPT_VERSION === 'undefined' || document.getElementById('helper-version-display')) {
              return;
@@ -1885,6 +1956,7 @@ function getExtGridFromMainGrid() {
     function runScript() {
         addButtonsToRows();
         addCheckOrderButton();
+        addCopyAnswersButton();
         addVersionDisplay();
         addMagicButton();
     }
