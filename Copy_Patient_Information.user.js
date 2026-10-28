@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Assign helper|copy
 // @namespace    http://tampermonkey.net/
-// @version      2.56
+// @version      2.57
 // @description  Great tool for best team
 // @match        https://emdspc.emsow.com/*
 // @grant        none
@@ -12,7 +12,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = '2.56';
+    const SCRIPT_VERSION = '2.57';
 
     // ====================================================================
     // RULES CONFIGURATION
@@ -115,10 +115,10 @@
         },
         prohibitedStudies: {
             'metroplus': ['Echocardiogram'],
-            'cigna': ['PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid'],
+            'cigna': ['PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','Soft tissue'],
             '$empire y7n$': ['Echocardiogram','SUDO3','SUDO'],
-            '$empire vof$': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','SUDO3','SUDO'],
-            '$empire jwx$': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','SUDO3','SUDO'],
+            '$empire vof$': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','SUDO3','SUDO','Soft tissue'],
+            '$empire jwx$': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','SUDO3','SUDO','Soft tissue'],
             '$empire y8e$': ['Echocardiogram', 'VNG3','SUDO3'],
             '$bcbs somos$': ['Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'LEA', 'UEA', 'ABI','SUDO3','SUDO'],
             'empire': ['SUDO3','SUDO'],
@@ -132,7 +132,7 @@
             '$hf essential$': ['Echocardiogram', 'SUDO3','SUDO'],
             '$hf medicaid$': ['Echocardiogram', 'SUDO3','SUDO'],
             '$centers plan for healthy living$': ['Echocardiogram'],
-            'oxford': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','Retroperetonial2','SUDO3'],
+            'oxford': ['ABD2','ABDO3','Ab2','Abdominal','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid','Retroperetonial2','SUDO3','Soft tissue'],
             'centerlight': ['Echocardiogram', 'Carotid', 'Abdominal Aorta2', 'SUDO3', 'SUDO', 'VNG3', 'LEA', 'LEA2', 'ABI', 'LEV', 'UEA','Renal Doppler', 'Retroperetonial2', 'Renal', 'ABD2', 'ABDO3','PEL2', 'Pelvic TV2', 'Scrotal', 'Thyroid', 'Soft tissue'],
             'wellcare': ['Echocardiogram'],
         },
